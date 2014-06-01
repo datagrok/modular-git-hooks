@@ -1,0 +1,94 @@
+#!/bin/sh
+
+#
+# a modular git hooks dispatcher
+#
+# Copyright 2014 Michael F. Lamb <mike@datagrok.org>
+# License: AGPLv3 http://www.gnu.org/licenses/agpl.html
+#
+
+# This uses run-parts to run several git hook scripts instead of one. This lets
+# us organize our git hooks into small, discrete, language-agnostic
+# executables.
+
+# To avoid copypasta this single script checks its own name to see how it is
+# being called; the expectation is that each of the git hooks will exist simply
+# as a symlink to this script.
+hook="$(basename $0)"
+if [ "$hook" = "dispatch" ]; then
+	echo 2>&1 "'$hook' should not be executed directly; instead, symlink a githook to it and let git invoke it."
+	exit 1
+fi
+
+# if there's no hooks directory for us to run-parts on, we may trivially exit.
+[ -d "$GIT_DIR"/hooks/"${hook}.d" ] || exit
+
+# some magic values used internally by git.
+export null_commit="0000000000000000000000000000000000000000"
+export empty_tree="4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+
+# Hook scripts are called with the same arguments that are passed by git to the
+# githook, with three exceptions pre-push, pre-receive, and post-receive.
+# Instead of passing data to these hooks on standard input, they receive an
+# extra first argument naming a file containing what git would have provided on
+# standard in.
+
+# It is expected that each sub-script will check for a flag or condition that
+# will allow the user to disable them using a git config variable.
+
+# In the pre-commit hook one frequently compares (git diff-index) the changes
+# marked for commit (--cached) against the most recent commit (HEAD). However,
+# there is an edge-case: if this is the first commit on the branch, the HEAD
+# reference will not yet exist, so we have to diff against the "secret"
+# empty-tree reference. Figure out whether to use HEAD or the secret ref and
+# keep that in a variable. Everybody likes to call this variable $AGAINST; I
+# think $head_hash is more intuitive.
+head_hash=$(git rev-parse --quiet --verify HEAD) || head_hash="$empty_tree"
+export head_hash
+
+case $hook in
+	pre-push|pre-receive|post-receive)
+		# These hooks are unique in that they are provided by git with data on
+		# standard input. Dump this data into a temporary file, and pass the
+		# filename as an argument to the hooks.
+		tempfile="$(mktemp)"
+		trap 'rm -f "$tempfile"' EXIT
+		set -- "$tempfile" "$@"
+		cat > "$tempfile"
+		;;
+esac
+
+run-parts "$GIT_DIR"/hooks/"${hook}.d"/ "$@"
+exit_code=$?
+
+case $hook in
+	post-update)
+		if [ "$exit_code" -ne 0 ]; then
+			cat <<- EOF
+
+				Warning: there was a problem running $hook githooks. (However,
+				this has no negative effect on the action you just attempted.)
+			EOF
+		fi
+		;;
+	pre-commit|commit-msg)
+		if [ $exit_status -ne 0 ]; then
+			cat <<- EOF
+
+				Aborting commit from $hook due to previous errors. If you want
+				to override these checks, pass the --no-verify option to 'git
+				commit'.
+
+				Note: these checks are performed against the contents of your
+				index (staging area.) If you don't see the problem being
+				reported, ensure that you've run 'git add' on the fixed lines.
+			EOF
+		fi
+		;;
+	update)
+		if [ $exit_status -ne 0 ]; then
+			echo "ERROR: aborting update to $1 due to previous errors."
+		fi
+esac
+
+exit $exit_code
