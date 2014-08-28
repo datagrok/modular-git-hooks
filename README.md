@@ -22,7 +22,7 @@ If you need some mini-hook to (not) run for some subset of your repositories, ju
 - you have several shared canonical repositories and wish to apply a different subset of your available remote git hooks to each of them, or
 - you wish to provide a shared set of git hooks to several developers on your team for their local use with your team's repositories.
 
-Shell and `run-parts` are its only dependencies. If your system does not include `run-parts`, there's a good-enough one in my gist [datagrok/run-parts.sh][]
+Shell and `run-parts` are its only dependencies. If your system does not include `run-parts`, or if it includes a faulty one like CentOS 5 does, there's a good-enough one in my gist [datagrok/run-parts.sh][]
 
 Most hook scripts should work unmodified as mini-hooks. See the note below under "Developing your own hooks" to see how to modify `pre-push`, `pre-receive`, and `post-receive` to work correctly.
 
@@ -140,7 +140,7 @@ If I were to re-implement `run-parts` within `dispatch` instead of employing the
 
 - adopt a filename convention that would allow the dispatch script to manage which subscripts get run, rather than insisting that subscripts abort themselves when appropriate.
 
-- easier compatibility with Windows and OS X users, whose systems do not include `run-parts`
+- easier compatibility with CentOS 5, Windows and OS X users, whose systems do not include a working `run-parts`.
 
 
 ## Similar tools
