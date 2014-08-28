@@ -1,8 +1,26 @@
 # modular-git-hooks
 
-Sometimes, you want to perform several different actions in one git hook.  Instead of using copy-paste or writing a script to call several other scripts, this repository demonstrates a technique that employs symlinks and Debian's `run-parts` mechanism to give you a separate directory for each hook. Toss as many scripts as you like in the appropriate directory and they will all be run, without editing configuration files or launcher scripts.
+Sometimes, you want to perform several different actions in one git hook. This repository demonstrates a technique that employs symlinks and Debian's `run-parts` mechanism to give you a separate directory for each hook, allowing you to keep each action in a separate script. Toss as many scripts as you like in the appropriate directory and they will all be run, without editing configuration files or launcher scripts.
 
-This technique can be useful as well when in the situation where you have several repositories and wish to apply the same set of git hooks to each of them. If you need some mini-hook to run or not run for some subset of your repositories, have them check for a 'git config' value and abort or continue as appropriate.
+<table><tr><th>Before</th><th>After</th></tr><tr><td><pre>
+.git/
+└── hooks/
+    └── pre-commit*
+</pre></td><td><pre>
+.git/
+└── hooks/
+    ├── pre-commit.d/
+    │   ├── format-code.sh*
+    │   ├── run-linter.py*
+    │   ├── unit-tests*
+    │   └── frobnicate.rb*
+    └── pre-commit -> /path/to/dispatch*
+</pre></tr></table>
+
+If you need some mini-hook to (not) run for some subset of your repositories, just have the mini-hook check for a 'git config' value and abort or continue as appropriate. This technique can be useful in the situations where:
+
+- you have several shared canonical repositories and wish to apply a different subset of your available remote git hooks to each of them, or
+- you wish to provide a shared set of git hooks to several developers on your team for their local use with your team's repositories.
 
 Shell and `run-parts` are its only dependencies. If your system does not include `run-parts`, there's a good-enough one in my gist [datagrok/run-parts.sh][]
 
@@ -18,14 +36,14 @@ Until I have this packaged up for easy installation in various operating systems
 Basically:
 
 1. get `dispatch` onto your system, somewhere. It doesn't need to be on the
-   $PATH. You can keep it in your .git/hooks directory if you prefer. I recommend /opt/local/lib/githooks/
+   `$PATH`. You can keep it in your `.git/hooks/` directory if you prefer. I recommend `/opt/lib/githooks/dispatch`.
 2. Ensure `run-parts` is somewhere in your `$PATH`.
 3. For each git hook, for example `pre-commit`:
     1. Create a `.d` directory for it: `mkdir .git/hooks/pre-commit.d`
     2. Move the existing hook, if it exists, into that directory: `mv .git/hooks/pre-commit .git/hooks/pre-commit.d/default`
     3. Create a symlink to `dispatch` named for the hook: `ln -s dispatch .git/hooks/pre-commit`
 
-In the case of a shared set of git hooks, I recommend creating a repository to hold them, organized as above, that you can clone into place at .git/hooks or symlink to as .git/hooks:
+In the case of a shared set of git hooks, I recommend creating a repository to hold them, organized as above, that you can clone into place at .git/hooks or symlink to as .git/hooks. See the next section for details.
 
 
 ## Mini-hooks repository organization
@@ -72,7 +90,7 @@ By default, most githooks are contained within a single script, and the git hook
 
 We want to perform potentially many different behaviors for each hook, and turn some of those behaviors off for certain repositories, and not cause git to complain during updates if one developer uses a hook that another does not. So, we break each of the git hook scripts into a directory containing many mini-hooks, and the original hook script is replaced with a (symlink to a) dispatcher. The result looks like this:
 
-Each hook gets its own directory containing mini-hook scripts, each of which will be run by the dispatch script when appropriate. The dispatch script need not live here; it might be available at the system level as /opt/lib/githooks/dispatch or it might use this repository as a submodule.
+Each hook gets its own directory containing mini-hook scripts, each of which will be run by the dispatch script when appropriate. The dispatch script need not live here; it might assume it is available at the system level as `/opt/lib/githooks/dispatch` or it might use this repository as a submodule.
 
     hooks/
     ├── commit-msg.d/
