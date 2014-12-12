@@ -23,11 +23,7 @@ This repository demonstrates a technique that gives you a separate directory for
     └── pre-commit -> /path/to/dispatch*
 </pre></tr></table>
 
-Shell and `run-parts` are its only dependencies. If your system does not include `run-parts`, or if it includes a faulty one like CentOS 5 does, there's a good-enough one in my gist [datagrok/run-parts.sh][]
-
-Most hook scripts should work unmodified within a hook-script directory. See the note below under "Developing your own hooks" to see how to modify `pre-push`, `pre-receive`, and `post-receive` hooks to work correctly.
-
-[datagrok/run-parts.sh]: https://gist.github.com/datagrok/43bc8077fbf9644f26b3
+Most hook scripts intended for standalone use should work unmodified within a hook-script directory.
 
 
 ## Setup
@@ -111,27 +107,29 @@ I use a similar configuration for my local clones, as well. No single hook scrip
 
 What if you want only a subset of your collection of hooks to run for each different repository?
 
-Just have each hook check for a 'git config' value and abort or continue as appropriate. In a script named, for example, `hooks/update.d/frobnicate.sh`, we might use one of these four mechanisms to make it easy to enable or disable the hook with a simple `git config ...`:
+The `dispatch` script will check git config for parameters that enable or disable each hook script. Scripts are enabled by default, unless their filename ends in `.optional`.
 
-    #!/bin/sh
+To disable a hook script named, for example, `pre-commit.d/format-code.sh`, use either of these commands:
 
-    # In practice, we'd only use one of these four mechanisms:
+    # parameter: "hook.(commit type).d/(filename).enabled"
+    git config --bool hook.pre-commit.d/format-code.sh.enabled false
 
-    # 1. Always run unless the user sets "git config hooks.performFrobnication false"
-    [ "$(git config --bool hooks.performFrobnication) || echo true)" = "true" ] || exit 0
+    # parameter: "hook.(filename).enabled"
+    git config --bool hook.format-code.sh.enabled false
 
-    # 2. Always run unless the user sets "git config hooks.skipFrobnication true"
-    [ "$(git config --bool hooks.skipFrobnication) || echo false)" = "false" ] || exit 0
+To enable a hook script named, for example, `pre-commit.d/frobnicate.optional`, use either of these commands:
 
-    # 3. Only run if the user sets "git config hooks.performFrobnication true"
-    [ "$(git config --bool hooks.performFrobnication) || echo false)" = "true" ] || exit 0
+    # parameter: "hook.(commit type).d/(filename).enabled"
+    git config --bool hook.pre-commit.d/frobnicate.optional.enabled true
 
-    # 4. Only run if the user sets "git config hooks.skipFrobnication false"
-    [ "$(git config --bool hooks.skipFrobnication) || echo true)" = "false" ] || exit 0
+    # parameter: "hook.(filename, less '.optional').enabled"
+    git config --bool hook.frobnicate.enabled true
 
-    echo "Performing frobnication..."
-    ...
+This implies that if you have a pre-commit and an update hook both named `frobnicate.optional`, or both named `format-code.sh`, the second command listed in these examples will enable or disable them both. This may be useful, for a set of hooks that must be enabled simultaneously to work properly. Just ensure you don't name-conflict with other, unrelated hooks.
 
+If git finds you have set both `hook.pre-commit.d/frobnicate.optional.enabled` and `hook.frobnicate.enabled`, it will ignore the latter (less specific) configuration. 
+
+Some hooks may specify their own git config parameters for enabling their execution; refer to their documentation.
 
 # Theory of operation
 
@@ -213,13 +211,13 @@ The `dispatch` script provided by this project need not necessarily live in the 
 
 ## Developing your own hooks
 
-The executable files in each `$hook.d` directory have the same semantics as normal git hooks: they are executable scripts or binaries like any other. With the exception of `pre-push`, `pre-receive`, and `post-receive`, they are passed the same arguments that git normally passes to its hooks.
+The executable files in each `$hook.d` directory have the same semantics as normal git hooks: they are executable scripts or binaries like any other. They are passed the same arguments and data on standard input that git normally passes to its hooks.
 
 Any hooks that are not marked executable are ignored.
 
-`pre-push`, `pre-receive`, and `post-receive` hooks are unique in that git normally provides those hooks with information on standard input. In order to multiplex this information to all mini-hooks, dispatch captures git's data into a temporary file and provides the filename as the first argument to these hooks. It is then the hook's responsibility to read and parse the file instead of reading from standard input.
+Hooks whose filenames begin with `.` or end with any of the following are ignored: `.sample`, `.rpmsave`, `.rpmorig`, `.rpmnew`, `.swp`, `,v`, `~`, `,`, `.dpkg-old`, `.dpkg-dist`, `.dpkg-new`, `.dpkg-tmp`
 
-The dispatch script will set into the environment for all hooks:
+The `dispatch` script will set the following variables into the environment for all hooks:
 
     null_commit - the special "null commit" value meaning a branch is being deleted
     empty_tree - the special "empty tree" value meaning HEAD does not exist
