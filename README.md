@@ -87,6 +87,7 @@ Then, for each of my bare repos, I simply symlink their hooks directory to this 
     │   ├── post-update.d/
     │   ├── pre-commit.d/
     │   ├── prepare-commit-msg.d/
+    │   ├── ...
     │   ├── update.d/
     │   │
     │   │                   # symlinks from the hooks `git` looks for to `dispatch`
@@ -94,6 +95,7 @@ Then, for each of my bare repos, I simply symlink their hooks directory to this 
     │   ├── post-update -> /opt/lib/modular-git-hooks/dispatch*
     │   ├── pre-commit -> /opt/lib/modular-git-hooks/dispatch*
     │   ├── prepare-commit-msg -> /opt/lib/modular-git-hooks/dispatch*
+    │   ├── ...
     │   └── update -> /opt/lib/modular-git-hooks/dispatch*
     │
     └── modular-git-hooks/  # a clone of this project, where `dispatch` lives
@@ -135,7 +137,7 @@ Just have each hook check for a 'git config' value and abort or continue as appr
 
 ## Hook types
 
-From git documentation, the hooks that git cares about are:
+From the [githooks(5) man page](https://www.kernel.org/pub/software/scm/git/docs/githooks.html), the hooks that git cares about are:
 
     local hooks:
 
@@ -171,7 +173,7 @@ Since there are no single hook scripts that are called for both local and remote
 
 By default, most githooks are contained within a single script, and the git hooks directory looks like this after some have been enabled:
 
-    hooks/
+    hooks/                  # Before using this mechanism
     ├── commit-msg*
     ├── post-update*
     ├── pre-commit*
@@ -180,7 +182,7 @@ By default, most githooks are contained within a single script, and the git hook
 
 We want to perform potentially many different behaviors for each hook, and turn some of those behaviors off for certain repositories, and not cause git to complain during updates if one developer uses a hook that another does not. So, we break each of the git hook scripts into a directory containing many mini-hooks, and the original hook script is replaced with a (symlink to a) dispatcher. The result looks like this:
 
-    hooks/
+    hooks/                  # After applying this mechanism
     ├── commit-msg.d/
     ├── post-update.d/
     ├── pre-commit.d/
