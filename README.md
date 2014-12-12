@@ -1,8 +1,10 @@
 # modular-git-hooks
 
-Sometimes, you want to perform several different actions in one git hook. For example, you might find several git hooks online that you would like to combine for use with your repositories.
+Sometimes, you want to perform several different actions in one git hook. For example, you might find several git pre-commit hooks online, all of which you would like to enable in your git repository.
 
-This repository demonstrates a technique that gives you a separate directory for each git hook, allowing you to keep each action in a separate script. Toss as many scripts as you like in the appropriate directory and they will all be executed, without editing configuration files or launcher-scripts.
+One fragile way to accomplish this is to copy-and-paste all of the code from the various hooks into the single hook script that git requires. A slightly less-horrible but still-unpleasant mechanism is to create a git hook which explicitly invokes each of your other scripts.
+
+This repository demonstrates a technique that gives you a separate directory for each type of git hook, allowing you to keep each hook action in its own modular script. Toss as many scripts as you like into the appropriate directory and they will all be executed, without editing configuration files or launcher-scripts.
 
 <table><tr><th>Before</th><th>After</th></tr><tr><td><pre>
 .git/
@@ -23,9 +25,10 @@ This repository demonstrates a technique that gives you a separate directory for
 
 Shell and `run-parts` are its only dependencies. If your system does not include `run-parts`, or if it includes a faulty one like CentOS 5 does, there's a good-enough one in my gist [datagrok/run-parts.sh][]
 
-Most hook scripts should work unmodified as mini-hooks. See the note below under "Developing your own hooks" to see how to modify `pre-push`, `pre-receive`, and `post-receive` hooks to work correctly.
+Most hook scripts should work unmodified within a hook-script directory. See the note below under "Developing your own hooks" to see how to modify `pre-push`, `pre-receive`, and `post-receive` hooks to work correctly.
 
 [datagrok/run-parts.sh]: https://gist.github.com/datagrok/43bc8077fbf9644f26b3
+
 
 ## Setup
 
@@ -41,7 +44,8 @@ Basically:
     2. Move the existing hook, if it exists, into that directory: `mv .git/hooks/pre-commit .git/hooks/pre-commit.d/default`
     3. Create a symlink to `dispatch` named for the hook: `ln -s dispatch .git/hooks/pre-commit`
 
-# A shared collection of your favorite hooks
+
+# A shared collection of hooks
 
 Do you have several canonical "bare" repositories stored in a central server, and apply some of the same hooks to all (or a subset) of them?
 
@@ -54,9 +58,14 @@ Employing `dispatch` to separate git hook behavior into modular files enables yo
 - easily share and apply them across all your git repositories, which enables you to
 - deploy hook script improvements to all your repositories simultaneously.
 
+
 ## Example
 
-I like to build a repository that contains everything needed for `dispatch` to work, and keep a clone of it on my central bare-repo server. Then, for each of my bare repos, I simply symlink their hooks directory to it. The result looks like this, and an explanation follows:
+I have a central server that contains several bare repos, most of which I want to apply a similar set of hooks to.
+
+I have a directory on that server that contains everything needed for `dispatch` to work, and all the hooks that all my repositories might need. This directory is itself under version control, and is a clone of a bare repository.
+
+Then, for each of my bare repos, I simply symlink their hooks directory to this central hooks clone. The result looks like this:
 
     /var/repos/ # This is the central area where I keep all my bare repos
     ├── project1.git/
@@ -69,16 +78,18 @@ I like to build a repository that contains everything needed for `dispatch` to w
     │   # you can even apply the git hooks to their own repository *mind blown*
     └── common-githooks.git/
         └── hooks -> /opt/lib/common-githooks/
-        
+
     /opt/lib/
     ├── common-githooks/    # my local collection of useful hooks, organized for `dispatch`
     │   ├── .git/           # which is itself under version control
-    │   ├── commit-msg.d/
+    │   │
+    │   ├── commit-msg.d/   # these directories contain all my hook scripts (not shown.)
     │   ├── post-update.d/
     │   ├── pre-commit.d/
     │   ├── prepare-commit-msg.d/
     │   ├── update.d/
     │   │
+    │   │                   # symlinks from the hooks `git` looks for to `dispatch`
     │   ├── commit-msg -> /opt/lib/modular-git-hooks/dispatch*
     │   ├── post-update -> /opt/lib/modular-git-hooks/dispatch*
     │   ├── pre-commit -> /opt/lib/modular-git-hooks/dispatch*
@@ -86,19 +97,43 @@ I like to build a repository that contains everything needed for `dispatch` to w
     │   └── update -> /opt/lib/modular-git-hooks/dispatch*
     │
     └── modular-git-hooks/  # a clone of this project, where `dispatch` lives
+        ├── .git/
         ├── README.md
-        ├── dispatch* 
-        ├── install-dispatch*
-        └── .git/
+        ├── dispatch*
+        └── install-dispatch*
 
 I use a similar configuration for my local clones, as well. No single hook script is called for both local and remote use, so it is safe to keep both local and remote hooks in the same repository!
 
 
+## Per-repository hook selection
+
+What if you want only a subset of your collection of hooks to run for each different repository?
+
+Just have each hook check for a 'git config' value and abort or continue as appropriate. In a script named, for example, `hooks/update.d/frobnicate.sh`, we might use one of these four mechanisms to make it easy to enable or disable the hook with a simple `git config ...`:
+
+    #!/bin/sh
+
+    # In practice, we'd only use one of these four mechanisms:
+
+    # 1. Always run unless the user sets "git config hooks.performFrobnication false"
+    [ "$(git config --bool hooks.performFrobnication) || echo true)" = "true" ] || exit 0
+
+    # 2. Always run unless the user sets "git config hooks.skipFrobnication true"
+    [ "$(git config --bool hooks.skipFrobnication) || echo false)" = "false" ] || exit 0
+
+    # 3. Only run if the user sets "git config hooks.performFrobnication true"
+    [ "$(git config --bool hooks.performFrobnication) || echo false)" = "true" ] || exit 0
+
+    # 4. Only run if the user sets "git config hooks.skipFrobnication false"
+    [ "$(git config --bool hooks.skipFrobnication) || echo true)" = "false" ] || exit 0
+
+    echo "Performing frobnication..."
+    ...
 
 
-In the case of a shared set of git hooks, I recommend creating a repository to hold them, organized as above, that you can clone into place at .git/hooks or symlink to as .git/hooks. See the next section for details.
+# Theory of operation
 
-
+## Hook types
 
 From git documentation, the hooks that git cares about are:
 
@@ -129,7 +164,10 @@ From git documentation, the hooks that git cares about are:
 
 Local hooks fire when performing various git actions in a local repository.  Remote hooks fire in upstream repositories when using "git push" and similar commands to send updates to them. See `man githooks` for more information about how git invokes these scripts.
 
-Since there are no single hook scripts that are called for both local and remote, it is safe to keep both local and remote hooks in the same repository and simply symlink .git/hooks to a shared clone of that repository.
+Since there are no single hook scripts that are called for both local and remote, it is safe to keep both local and remote hooks in the same repository.
+
+
+## Walk-through
 
 By default, most githooks are contained within a single script, and the git hooks directory looks like this after some have been enabled:
 
@@ -168,40 +206,14 @@ To cause git to employ the dispatch script, each of git's hooks becomes a symlin
     ├── pre-receive -> dispatch*
     └── update -> dispatch*
 
-Any mini-hooks that are not marked executable are effectively disabled. 
+The `dispatch` script provided by this project need not necessarily live in the repo that collects all your hook scripts, as shown here. One might prefer to install `dispatch` at the system level, for example a clone of this project at /opt/lib: `/opt/lib/modular-git-hooks/dispatch`, as I have shown in an earlier example. Or, your hook scripts repo might add this project as a git submodule.
 
-The `dispatch` script provided by this project need not necessarily live in the repo that collects all your hook scripts. One might prefer to install `dispatch` at the system level, for example a clone of this project at /opt/lib: `/opt/lib/modular-git-hooks/dispatch`. Or, your hook scripts repo might add this project as a git submodule.
-
-## Per-repository hook selection
-
-What if you want only a subset of your collection of hooks to run for each different repository?
-
-Just have the mini-hook check for a 'git config' value and abort or continue as appropriate:
-
-    #!/bin/sh
-
-    # In a script named, for example, hooks/update.d/frobnicate.sh, we might
-    # use one of these four mechanisms to make it easy to enable or disable the
-    # hook with a simple "git config".
-
-    # 1. Always run unless the user sets "git config hooks.performFrobnication false"
-    [ "$(git config --bool hooks.performFrobnication) || echo true)" = "true" ] || exit 0
-
-    # 2. Always run unless the user sets "git config hooks.skipFrobnication true"
-    [ "$(git config --bool hooks.skipFrobnication) || echo false)" = "false" ] || exit 0
-
-    # 3. Only run if the user sets "git config hooks.performFrobnication true"
-    [ "$(git config --bool hooks.performFrobnication) || echo false)" = "true" ] || exit 0
-
-    # 4. Only run if the user sets "git config hooks.skipFrobnication false"
-    [ "$(git config --bool hooks.skipFrobnication) || echo true)" = "false" ] || exit 0
-
-    echo "Performing frobnication..."
-    ...
 
 ## Developing your own hooks
 
 The executable files in each `$hook.d` directory have the same semantics as normal git hooks: they are executable scripts or binaries like any other. With the exception of `pre-push`, `pre-receive`, and `post-receive`, they are passed the same arguments that git normally passes to its hooks.
+
+Any hooks that are not marked executable are ignored.
 
 `pre-push`, `pre-receive`, and `post-receive` hooks are unique in that git normally provides those hooks with information on standard input. In order to multiplex this information to all mini-hooks, dispatch captures git's data into a temporary file and provides the filename as the first argument to these hooks. It is then the hook's responsibility to read and parse the file instead of reading from standard input.
 
@@ -231,8 +243,4 @@ If I were to re-implement `run-parts` within `dispatch` instead of employing the
 
 ## License
 
-Copyright 2014 [Michael F. Lamb][]. <http://datagrok.org>
-
-This software is released under the terms of the [GNU General Public License](http://www.gnu.org/licenses/gpl.html), version 3.
-
-[Michael F. Lamb]: http://datagrok.org
+Copyright 2014 [Michael F. Lamb](http://datagrok.org). This software is released under the terms of the [GNU General Public License](http://www.gnu.org/licenses/gpl.html), version 3.
