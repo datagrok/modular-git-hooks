@@ -3,8 +3,14 @@
 #
 # a modular git hooks dispatcher
 #
-# Copyright 2014 Michael F. Lamb <mike@datagrok.org>
-# License: AGPLv3 http://www.gnu.org/licenses/agpl.html
+# Copyright 2014 Michael F. Lamb <http://datagrok.org>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# License: GPLv3 http://www.gnu.org/licenses/gpl.html
 #
 
 # This uses run-parts to run several git hook scripts instead of one. This lets
