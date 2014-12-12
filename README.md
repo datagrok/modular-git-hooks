@@ -4,7 +4,7 @@ Sometimes, you want to perform several different actions in one git hook. For ex
 
 One fragile way to accomplish this is to copy-and-paste all of the code from the various hooks into the single hook script that git requires. A slightly less-horrible but still-unpleasant mechanism is to create a git hook which explicitly invokes each of your other scripts.
 
-This repository demonstrates a technique that gives you a separate directory for each type of git hook, allowing you to keep each hook action in its own modular script. Toss as many scripts as you like into the appropriate directory and they will all be executed, without editing configuration files or launcher-scripts.
+This repository demonstrates a technique that gives you a separate directory for each type of git hook, allowing you to keep each hook action in its own modular script. Toss as many scripts as you like into the appropriate directory and they will all be executed, in alphanumeric order, without editing configuration files or launcher-scripts.
 
 <table><tr><th>Before</th><th>After</th></tr><tr><td><pre>
 .git/
