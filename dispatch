@@ -40,12 +40,8 @@ if [ "$hook_type" = "dispatch" ]; then
 	exit 1
 fi
 
-# FIXME: is this dangerous? Could it violate expectations of hook scripts? Only
-# here to avoid a bunch of filename parsing.
-cd "$GIT_DIR/hooks"
-
 # if there's no hooks directory for us to dispatch into, we may trivially exit.
-[ -d "${hook_type}.d" ] || exit 0
+[ -d "$GIT_DIR/hooks/${hook_type}.d" ] || exit 0
 
 # some magic values used internally by git.
 export null_commit="0000000000000000000000000000000000000000"
@@ -79,14 +75,13 @@ case "$hook_type" in
 		# as standard input to each of the hooks.
 		tempfile="$(mktemp)"
 		trap 'rm -f "$tempfile"' EXIT
-		set -- "$tempfile" "$@"
 		cat > "$tempfile"
 		;;
 esac
 
 # loop over all hooks of our $hook_type
 exit_status=0
-for hook in "${hook_type}.d"/*; do
+for hook in "$GIT_DIR/hooks/${hook_type}.d"/*; do
 	# skip non-executable and non-files
 	[ -f "$hook" -a -x "$hook" ] || continue
 	# skip bad suffixes
@@ -96,41 +91,45 @@ for hook in "${hook_type}.d"/*; do
 
 	# now we have a viable candidate. check git config to see if it should be
 	# run. hooks named .optional default to no, otherwise yes.
-	f_short="${hook%.optional}"
+	hook_short="${hook%.optional}"
 	if [ "${hook_short}" = "${hook}" ]
-	then # hook does not end in ".optional"
-		run_default="true"
-	else # hook ends in ".optional"
-		run_default="false"
+	then run_default="true" # hook does not end in ".optional"
+	else run_default="false" # hook ends in ".optional"
 	fi
+	hook_short="${hook_short#"$GIT_DIR/hooks/"}"
 	[ "$(git config --bool hook.${hook_short}.enable || git config --bool hook.${hook_short##*/}.enable || echo $run_default)" = "true" ] || continue
 
 	# run the hook with the args git gave us and if $tempfile exists, provide
 	# it on standard input.
-	"$hook" "$@" ${tempfile?<"$tempfile"} || {
+	if [ "$tempfile" ]; then
+		"$hook" "$@" <"$tempfile"
+	else
+		"$hook" "$@"
+	fi || {
 		exit_status=$?
-		echo "$0: $hook exited with return code $exit_status"
+		echo "$0: $hook_short exited with return code $exit_status" >&2
 	}
 done
 
 # all the hooks have run; perform some cleanup.
-case "$hook" in
+case "$hook_type" in
 	post-update)
 		if [ "$exit_status" -ne 0 ]; then
-			cat <<- EOF
+			cat >&2 <<- EOF
 
-				Warning: there was a problem running $hook githooks. (However,
-				this has no negative effect on the action you just attempted.)
+				Warning: there was a problem running $hook_type githooks.
+				(However, this has no negative effect on the action you just
+				attempted.)
 			EOF
 		fi
 		;;
 	pre-commit|commit-msg)
 		if [ $exit_status -ne 0 ]; then
-			cat <<- EOF
+			cat >&2 <<- EOF
 
-				Aborting commit from $hook due to previous errors. If you want
-				to override these checks, pass the --no-verify option to 'git
-				commit'.
+				Aborting commit from $hook_type due to previous errors. If you
+				want to override these checks, pass the --no-verify option to
+				'git commit'.
 
 				Note: these checks are performed against the contents of your
 				index (staging area.) If you don't see the problem being
@@ -140,7 +139,7 @@ case "$hook" in
 		;;
 	update)
 		if [ $exit_status -ne 0 ]; then
-			echo "ERROR: aborting update to $1 due to previous errors."
+			echo "ERROR: aborting update to $1 due to previous errors." >&2
 		fi
 esac
 
