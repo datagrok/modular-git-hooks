@@ -25,7 +25,8 @@ if git_dir="$(git rev-parse --git-dir)"; then
 else
 	cat >&2 <<-EOF
 		Warning: we don't seem to be within a git repository. Assuming current
-		directory is where you want to set up 'dispatch'.
+		directory is where you want to set up 'dispatch'. (For use as a shared
+		hooks directory that you'll attach to git repositories with symlinks.)
 		EOF
 	hooks_dir="."
 fi
