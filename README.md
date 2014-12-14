@@ -23,8 +23,7 @@ This repository demonstrates a technique that gives you a separate directory for
     └── pre-commit -> /path/to/dispatch*
 </pre></tr></table>
 
-Most hook scripts intended for standalone use should work unmodified within a hook-script directory.
-
+Most hook scripts intended for standalone use should work, unmodified, when placed within a hook-script directory.
 
 ## Setup
 
@@ -32,14 +31,16 @@ Until I have this packaged up for easy installation in various operating systems
 
 Basically:
 
-1. get `dispatch` onto your system, somewhere. It doesn't need to be on the
-   `$PATH`. You can keep it in your `.git/hooks/` directory if you prefer. I recommend `/opt/lib/githooks/dispatch`.
-2. Ensure `run-parts` is somewhere in your `$PATH`.
-3. For each git hook, for example `pre-commit`:
-    1. Create a `.d` directory for it: `mkdir .git/hooks/pre-commit.d`
-    2. Move the existing hook, if it exists, into that directory: `mv .git/hooks/pre-commit .git/hooks/pre-commit.d/default`
-    3. Create a symlink to `dispatch` named for the hook: `ln -s dispatch .git/hooks/pre-commit`
+1. get `dispatch` onto your system, somewhere. It doesn't need to be on the `$PATH`. You can keep it in your `.git/hooks/` directory if you prefer. I recommend `/opt/lib/githooks/`.
+2. put `install-dispatch` in the same directory as `dispatch`.
+3. from within your git repository, run `install-dispatch`. You may need to specify the full path to it, like `/opt/lib/githooks/install-dispatch`.
 
+If you prefer not to use `install-dispatch`, you may manually perform the steps that it does:
+
+1. For each git hook, for example `pre-commit`:
+    1. Create a `.d` directory for it: `mkdir .git/hooks/pre-commit.d`
+    2. Move the existing hook, if it exists, into that directory: `mv .git/hooks/pre-commit .git/hooks/pre-commit.d/pre-commit.orig`
+    3. Create a symlink to `dispatch` named for the hook: `ln -s dispatch .git/hooks/pre-commit`
 
 # A shared collection of hooks
 
