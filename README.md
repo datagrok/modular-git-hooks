@@ -225,17 +225,6 @@ The `dispatch` script will set the following variables into the environment for 
     head_hash - the hash corresponding to HEAD, or empty_tree if HEAD does not exist
 
 
-## To do
-
-If I were to re-implement `run-parts` within `dispatch` instead of employing the one Debian provides, it would allow me to add the following features:
-
-- allow pre-push, pre-receive, and post-receive hooks to work, unmodified, by passing their data on standard in like they expect.
-
-- adopt a filename convention that would allow the dispatch script to manage which subscripts get run, rather than insisting that subscripts abort themselves when appropriate.
-
-- easier compatibility with CentOS 5, Windows and OS X users, whose systems do not include a working `run-parts`.
-
-
 ## Similar tools
 
 - [pre-commit](http://pre-commit.com/) is a framework only for pre-commit hooks and requires you to modify configuration files.
