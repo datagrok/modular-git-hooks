@@ -13,34 +13,50 @@
 # License: GPLv3 http://www.gnu.org/licenses/gpl.html
 #
 
-# This uses run-parts to run several git hook scripts instead of one. This lets
-# us organize our git hooks into small, discrete, language-agnostic
-# executables.
+# This runs several scripts per git hook instead of one. This lets us organize
+# our git hooks into small, discrete, language-agnostic executables. It
+# somewhat apes Debian's 'ruu parts' in its operation, but does not employ it
+# directly.
+
+# Variable names used in this script:
+#
+# null_commit 	- (exported) a magic sha hash value meaningful to git
+# empty_tree 	- (exported) a magic sha hash value meaningful to git
+# head_hash 	- (exported) a sha hash useful to hooks, see details below.
+# bad_suffixes 	- a space-separated list of hook filename suffixes that will make us ignore that hook
+# exit_status	- the last-encountered failing exit status of a dispatched hook, or 0.
+# hook			- the filename of the current hook being processed relative to $GIT_DIR/hooks, like 'pre-commit.d/run_linter.sh.optional'
+# hook_short	- $hook as above, minus any '.optional' suffix, like 'pre-commit.d/run_linter.sh'
+# hook_type 	- the hook name called by git, like 'update', 'pre-commit', 'post-receive', etc.
+# run_default	- whether the current hook should run, if no configuration mentions it.
+# tempfile 		- filename of a temporary file created to hold standard input to 'pre-push', 'pre-receive', and 'post-receive' hooks.
 
 # To avoid copypasta this single script checks its own name to see how it is
 # being called; the expectation is that each of the git hooks will exist simply
 # as a symlink to this script.
-hook="$(basename $0)"
-if [ "$hook" = "dispatch" ]; then
-	echo 2>&1 "'$hook' should not be executed directly; instead, symlink a githook to it and let git invoke it."
+hook_type="$(basename $0)"
+if [ "$hook_type" = "dispatch" ]; then
+	echo 2>&1 "'$hook_type' should not be executed directly; instead, symlink a githook to it and let git invoke it."
 	exit 1
 fi
 
-# if there's no hooks directory for us to run-parts on, we may trivially exit.
-[ -d "$GIT_DIR"/hooks/"${hook}.d" ] || exit
+# if there's no hooks directory for us to dispatch into, we may trivially exit.
+[ -d "$GIT_DIR/hooks/${hook_type}.d" ] || exit 0
 
 # some magic values used internally by git.
 export null_commit="0000000000000000000000000000000000000000"
 export empty_tree="4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 
-# Hook scripts are called with the same arguments that are passed by git to the
-# githook, with three exceptions pre-push, pre-receive, and post-receive.
-# Instead of passing data to these hooks on standard input, they receive an
-# extra first argument naming a file containing what git would have provided on
-# standard in.
+# never run hook scripts with these suffixes even if they're marked executable:
+# redhat skips these
+bad_suffixes=".rpmsave .rpmorig .rpmnew .swp ,v ~ ,"
+# debian skips these when using --lsbsysinit
+bad_suffixes="$bad_suffixes .dpkg-old .dpkg-dist .dpkg-new .dpkg-tmp"
+# git skips these
+bad_suffixes="$bad_suffixes .sample"
 
-# It is expected that each sub-script will check for a flag or condition that
-# will allow the user to disable them using a git config variable.
+# Hook scripts are called with the same arguments and data on standard input
+# that are passed by git to its githook.
 
 # In the pre-commit hook one frequently compares (git diff-index) the changes
 # marked for commit (--cached) against the most recent commit (HEAD). However,
@@ -52,38 +68,68 @@ export empty_tree="4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 head_hash=$(git rev-parse --quiet --verify HEAD) || head_hash="$empty_tree"
 export head_hash
 
-case $hook in
+case "$hook_type" in
 	pre-push|pre-receive|post-receive)
 		# These hooks are unique in that they are provided by git with data on
-		# standard input. Dump this data into a temporary file, and pass the
-		# filename as an argument to the hooks.
+		# standard input. Dump this data into a temporary file, and replay it
+		# as standard input to each of the hooks.
 		tempfile="$(mktemp)"
 		trap 'rm -f "$tempfile"' EXIT
-		set -- "$tempfile" "$@"
 		cat > "$tempfile"
 		;;
 esac
 
-run-parts "$GIT_DIR"/hooks/"${hook}.d"/ "$@"
-exit_code=$?
+# loop over all hooks of our $hook_type
+exit_status=0
+for hook in "$GIT_DIR/hooks/${hook_type}.d"/*; do
+	# skip non-executable and non-files
+	[ -f "$hook" -a -x "$hook" ] || continue
+	# skip bad suffixes
+	for ext in $bad_suffixes; do
+		[ "${hook%$ext}" = "${hook}" ] || continue 2
+	done
 
-case $hook in
+	# now we have a viable candidate. check git config to see if it should be
+	# run. hooks named .optional default to no, otherwise yes.
+	hook_short="${hook%.optional}"
+	if [ "${hook_short}" = "${hook}" ]
+	then run_default="true" # hook does not end in ".optional"
+	else run_default="false" # hook ends in ".optional"
+	fi
+	hook_short="${hook_short#"$GIT_DIR/hooks/"}"
+	[ "$(git config --bool hook.${hook_short}.enable || git config --bool hook.${hook_short##*/}.enable || echo $run_default)" = "true" ] || continue
+
+	# run the hook with the args git gave us and if $tempfile exists, provide
+	# it on standard input.
+	if [ "$tempfile" ]; then
+		"$hook" "$@" <"$tempfile"
+	else
+		"$hook" "$@"
+	fi || {
+		exit_status=$?
+		echo "$0: $hook_short exited with return code $exit_status" >&2
+	}
+done
+
+# all the hooks have run; perform some cleanup.
+case "$hook_type" in
 	post-update)
-		if [ "$exit_code" -ne 0 ]; then
-			cat <<- EOF
+		if [ "$exit_status" -ne 0 ]; then
+			cat >&2 <<- EOF
 
-				Warning: there was a problem running $hook githooks. (However,
-				this has no negative effect on the action you just attempted.)
+				Warning: there was a problem running $hook_type githooks.
+				(However, this has no negative effect on the action you just
+				attempted.)
 			EOF
 		fi
 		;;
 	pre-commit|commit-msg)
 		if [ $exit_status -ne 0 ]; then
-			cat <<- EOF
+			cat >&2 <<- EOF
 
-				Aborting commit from $hook due to previous errors. If you want
-				to override these checks, pass the --no-verify option to 'git
-				commit'.
+				Aborting commit from $hook_type due to previous errors. If you
+				want to override these checks, pass the --no-verify option to
+				'git commit'.
 
 				Note: these checks are performed against the contents of your
 				index (staging area.) If you don't see the problem being
@@ -93,8 +139,9 @@ case $hook in
 		;;
 	update)
 		if [ $exit_status -ne 0 ]; then
-			echo "ERROR: aborting update to $1 due to previous errors."
+			echo "ERROR: aborting update to $1 due to previous errors." >&2
 		fi
 esac
 
-exit $exit_code
+# exit with an appropriate success code.
+exit $exit_status

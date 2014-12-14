@@ -1,0 +1,87 @@
+#!/bin/sh
+
+#
+# a script to prepare a git hooks directory to employ `dispatch`
+#
+# Copyright 2014 Michael F. Lamb <http://datagrok.org>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# License: GPLv3 http://www.gnu.org/licenses/gpl.html
+#
+
+# TODO: add a default --noop option
+# TODO: add --quiet/--verbose option
+# TODO: option to set up all (hook).d directories even if they'd be empty.
+# TODO: option to manually specify path to dispatch, overriding our heuristic
+
+if git_dir="$(git rev-parse --git-dir)"; then
+	hooks_dir="$git_dir/hooks"
+	# create the hooks directory if it doesn't exist.
+	[ -d "$hooks_dir" ] || mkdir "$hooks_dir"
+else
+	cat >&2 <<-EOF
+		Warning: we don't seem to be within a git repository. Assuming current
+		directory is where you want to set up 'dispatch'. (For use as a shared
+		hooks directory that you'll attach to git repositories with symlinks.)
+		EOF
+	hooks_dir="."
+fi
+
+# If 'dispatch' lives somewhere within git_dir/hooks, we must relative-link to
+# it. Otherwise, we must use an absolute path.
+dispatch_abs="$(dirname "$(readlink -f "$0")")/dispatch"
+[ -e "$dispatch_abs" ] || {
+	echo "Error: could not find dispatch at expected location, $dispatch_abs."
+	exit 2
+	}
+hooks_abs="$(readlink -f "$hooks_dir")"
+dispatch="${dispatch_abs%"$hooks_abs/"}"
+
+# Create hooks if nonexistent, but don't die when extant.
+for hook in \
+	applypatch-msg commit-msg post-applypatch post-checkout post-commit \
+	post-merge post-receive post-rewrite post-update pre-applypatch \
+	pre-auto-gc pre-commit pre-push pre-rebase pre-receive \
+	prepare-commit-msg update
+do
+	# create links to dispatch for all possible hooks (since that's tedious),
+	# but don't create directories unless needed. (since the user can do that
+	# easily.) try to detect if we're running against an already-configured
+	# directory and behave appropriately.
+	hook_fn="$hooks_dir/$hook"
+	hook_fn_rl="$(readlink "$hook_fn")"
+	if [ -f "$hook_fn" ]; then
+		if [ -d "$hooks_dir/$hook.d" ]; then
+			echo "skip   $hook.d (exists)" >&2
+		else
+			echo "create $hook.d/" >&2
+			mkdir "$hooks_dir/$hook.d"
+		fi
+		if [ -h "$hook_fn" -a "${hook_fn_rl%dispatch}" != "$hook_fn_rl" ]; then
+			# If the existing hook is a symlink to dispatch, delete it (we'll
+			# replace it with ours.) (Maybe the user wants to update the path
+			# to their dispatch.)
+			echo "delete $hook (updating link)" >&2
+			rm "$hook_fn"
+		elif [ -h "$hook_fn" -a "${hook_fn_rl#.}" != "$hook_fn_rl" ]; then
+			# If it points elsewhere, relative, delete and create replacement
+			# in our hooks directory prepended with '../'.
+			# FIXME if $hooks_dir itself is a symlink elsewhere, this will
+			# break!
+			echo "move   $hook -> $hook.d/$hook.orig (updating symlink)" >&2
+			ln -s "../$hook_fn_rl" "$hooks_dir/$hook.d/$hook.orig"
+			rm "$hook_fn"
+		else
+			# Otherwise it's a symlink to an absolute path, so just treat it
+			# like a file and move it into our hooks directory.
+			echo "move   $hook -> $hook.d/$hook.orig" >&2
+			mv "$hook_fn" "$hooks_dir/$hook.d/$hook.orig"
+		fi
+	fi
+	echo "link   $hook -> dispatch" >&2
+	ln -s "$dispatch" "$hook_fn"
+done
