@@ -1,10 +1,12 @@
 # modular-git-hooks
 
-Sometimes, you want to perform several different actions in one git hook. For example, you might find several git pre-commit hooks online, all of which you would like to enable in your git repository.
+Sometimes, you want to perform several different actions in one git hook. For example, you might find several useful pre-commit hooks online, all of which you would like to enable in your git repository.
 
-One fragile way to accomplish this is to copy-and-paste all of the code from the various hooks into the single hook script that git requires. A slightly less-horrible but still-unpleasant mechanism is to create a git hook which explicitly invokes each of your other scripts.
+One fragile way to accomplish this is to copy-and-paste all of the code from those various pre-commit hooks into the single hook that git requires, named `hooks/pre-commit`. This is, of course, impossible if some of those hooks are implemented in differing languages.
 
-This repository demonstrates a technique that gives you a separate directory for each type of git hook, allowing you to keep each hook action in its own modular script. Toss as many scripts as you like into the appropriate directory and they will all be executed, in alphanumeric order, without editing configuration files or launcher-scripts.
+A slightly less-horrible but still-unpleasant mechanism is to create a `hooks/pre-commit` dispatching script which explicitly invokes each of the hooks you have downloaded and stored in separate files. But then you have to modify that dispatcher every time you update, deal with passing arguments and standard-input to the sub-hooks, and handle their exit statuses correctly.
+
+This repository provides a **general-purpose `dispatch`** tool that does all that for you and requires **no modification when you add or remove hooks**. It gives you a separate directory for each type of git hook, allowing you to **keep each hook in its own file**. Toss as many hooks as you like into the appropriate directory and they will all be executed, in alphanumeric order, **without editing configuration files** or launcher-scripts. It uses `git config` for any configuration needs. It is implemented in `dash`- and `bash`-compatible shell script, which, granted, isn't the most pleasant or elegant, but on the other hand means you don't have to worry about your hooks breaking for lack of the correct version of Python, Ruby, or some other language du jour.
 
 <table><tr><th>Before</th><th>After</th></tr><tr><td><pre>
 .git/
@@ -23,7 +25,7 @@ This repository demonstrates a technique that gives you a separate directory for
     └── pre-commit -> /path/to/dispatch*
 </pre></tr></table>
 
-Most hook scripts intended for standalone use should work, unmodified, when placed within a hook-script directory.
+Most hooks intended for standalone use should work, unmodified, when placed within a hook-type directory.
 
 ## Setup
 
@@ -37,14 +39,14 @@ Basically:
 
 If you prefer not to use `install-dispatch`, you may manually perform the steps that it does:
 
-1. For each git hook, for example `pre-commit`:
+1. For each git hook type, for example `pre-commit`:
     1. Create a `.d` directory for it: `mkdir .git/hooks/pre-commit.d`
     2. Move the existing hook, if it exists, into that directory: `mv .git/hooks/pre-commit .git/hooks/pre-commit.d/pre-commit.orig`
-    3. Create a symlink to `dispatch` named for the hook: `ln -s dispatch .git/hooks/pre-commit`
+    3. Create a symlink to `dispatch` named for the hook type: `ln -s dispatch .git/hooks/pre-commit`
 
 # A shared collection of hooks
 
-Do you have several canonical "bare" repositories stored in a central server, and apply some of the same hooks to all (or a subset) of them?
+Do you have several canonical "bare" repositories stored in a central server, and apply (many of) the same hooks to (many of) them?
 
 Do you wish to provide a shared set of git hooks to several developers on your team for their local use with your team's repositories?
 
@@ -53,7 +55,7 @@ Employing `dispatch` to separate git hook behavior into modular files enables yo
 - keep your git hooks better organized,
 - keep the hooks themselves under version control,
 - easily share and apply them across all your git repositories, which enables you to
-- deploy hook script improvements to all your repositories simultaneously.
+- deploy hook improvements to all your repositories simultaneously.
 
 
 ## Example
@@ -64,7 +66,7 @@ I have a directory on that server that contains everything needed for `dispatch`
 
 Then, for each of my bare repos, I simply symlink their hooks directory to this central hooks clone. The result looks like this:
 
-    /var/repos/ # This is the central area where I keep all my bare repos
+    /var/repos/             # This is the central area where I keep all my bare repos
     ├── project1.git/
     │    └── hooks -> /opt/lib/common-githooks/
     ├── project2.git/
@@ -80,7 +82,7 @@ Then, for each of my bare repos, I simply symlink their hooks directory to this 
     ├── common-githooks/    # my local collection of useful hooks, organized for `dispatch`
     │   ├── .git/           # which is itself under version control
     │   │
-    │   ├── commit-msg.d/   # these directories contain all my hook scripts (not shown.)
+    │   ├── commit-msg.d/   # these directories contain all my hooks (not shown.)
     │   ├── post-update.d/
     │   ├── pre-commit.d/
     │   ├── prepare-commit-msg.d/
@@ -101,42 +103,37 @@ Then, for each of my bare repos, I simply symlink their hooks directory to this 
         ├── dispatch*
         └── install-dispatch*
 
-I use a similar configuration for my local clones, as well. No single hook script is called for both local and remote use, so it is safe to keep both local and remote hooks in the same repository!
+I use a similar configuration for my local clones, as well. No single hook is called for both local and remote use, so it is safe to keep both local and remote hooks in the same repository!
 
+You don't have to use my path conventions. `install-dispatch` will set up the symlinks correctly for you no matter where it lives.
 
 ## Per-repository hook selection
 
 What if you want only a subset of your collection of hooks to run for each different repository?
 
-The `dispatch` script will check git config for parameters that enable or disable each hook script. Scripts are enabled by default, unless their filename ends in `.optional`.
+`dispatch` will check git config for parameters that enable or disable each hook by filename, optionally including hook type. Hooks are enabled by default, unless their filename ends in `.optional`.
 
-To disable a hook script named, for example, `pre-commit.d/format-code.sh`, use either of these commands:
+You may specify which hooks to enable or disable using a `git config` parameter based on a "long form" or "short form" of their filename. "Long form" includes the hook type directory and the full filename. "Short form" omits the hook type directory, and the `.optional` extension, if it exists. Examples follow.
 
-    # parameter: "hook.(commit type).d/(filename).enabled"
+A hook named `pre-commit.d/format-code.sh` is enabled by default. To disable it, use either of these commands:
+
     git config --bool hook.pre-commit.d/format-code.sh.enabled false
-
-    # parameter: "hook.(filename).enabled"
     git config --bool hook.format-code.sh.enabled false
 
-To enable a hook script named, for example, `pre-commit.d/frobnicate.optional`, use either of these commands:
+A hook named `pre-commit.d/frobnicate.optional` is disabled by default. To enable it, use either of these commands:
 
-    # parameter: "hook.(commit type).d/(filename).enabled"
     git config --bool hook.pre-commit.d/frobnicate.optional.enabled true
-
-    # parameter: "hook.(filename, less '.optional').enabled"
     git config --bool hook.frobnicate.enabled true
 
-This implies that if you have a pre-commit and an update hook both named `frobnicate.optional`, or both named `format-code.sh`, the second command listed in these examples will enable or disable them both. This may be useful, for a set of hooks that must be enabled simultaneously to work properly. Just ensure you don't name-conflict with other, unrelated hooks.
+Note that if you have more than one type of hook named `format-code.sh`, the "short form" will enable or disable all types of them at once. This may be useful, for a set of cooperative hooks of multiple types that must be enabled or disabled simultaneously to work properly. Just ensure you don't name-conflict with other, unrelated hooks of different hook types.
 
-If git finds you have set both `hook.pre-commit.d/frobnicate.optional.enabled` and `hook.frobnicate.enabled`, it will ignore the latter (less specific) configuration. 
-
-Some hooks may specify their own git config parameters for enabling their execution; refer to their documentation.
+Note that if you have set configuration values in *both* "long form" (more specific) and "short form" (less specific) syntax for a hook, the "long form" takes precedence. 
 
 # Theory of operation
 
 ## Hook types
 
-From the [githooks(5) man page](https://www.kernel.org/pub/software/scm/git/docs/githooks.html), the hooks that git cares about are:
+From the [githooks(5) man page][], the hook types that git cares about are:
 
     local hooks:
 
@@ -163,23 +160,23 @@ From the [githooks(5) man page](https://www.kernel.org/pub/software/scm/git/docs
         post-receive        |
         post-update         /
 
-Local hooks fire when performing various git actions in a local repository.  Remote hooks fire in upstream repositories when using "git push" and similar commands to send updates to them. See `man githooks` for more information about how git invokes these scripts.
+Local hooks fire when performing various git actions in a local repository. Remote hooks fire in upstream repositories when using "git push" and similar commands to send updates to them. See the [githooks(5) man page][] for more information about how git invokes these scripts.
 
-Since there are no single hook scripts that are called for both local and remote, it is safe to keep both local and remote hooks in the same repository.
+Since there are no single hook types that are invoked for both local and remote, it is safe to keep both local and remote hooks in the same repository.
 
 
 ## Walk-through
 
-By default, most githooks are contained within a single script, and the git hooks directory looks like this after some have been enabled:
+By default, most git hooks are contained within a single executable file. When some have been enabled, the repository's hooks directory might look like this:
 
-    hooks/                  # Before using this mechanism
+    hooks/                  # Before using the modular-git-hooks dispatch mechanism
     ├── commit-msg*
     ├── post-update*
     ├── pre-commit*
     ├── prepare-commit-msg*
     └── update*
 
-We want to perform potentially many different behaviors for each hook, and turn some of those behaviors off for certain repositories, and not cause git to complain during updates if one developer uses a hook that another does not. So, we break each of the git hook scripts into a directory containing many mini-hooks, and the original hook script is replaced with a (symlink to a) dispatcher. The result looks like this:
+We want to perform potentially many different behaviors for each hook, and turn some of those behaviors off for certain repositories. If the hooks themselves are managed by git, we don't want git to complain about modified files when developers sharing the hooks repository enable and disable various functionality. So, we break each of the monolithic git hooks into a directory containing many modular hooks, and the original hook that git invokes is replaced with a (symlink to a) dispatcher. The result looks like this:
 
     hooks/                  # After applying this mechanism
     ├── commit-msg.d/
@@ -190,9 +187,9 @@ We want to perform potentially many different behaviors for each hook, and turn 
     ├── dispatch*
     ...
 
-Each hook gets its own directory containing mini-hook scripts, each of which will be run by the dispatch script when appropriate.
+Each hook type gets its own directory containing hooks, each of which will be run by `dispatch` when appropriate.
 
-To cause git to employ the dispatch script, each of git's hooks becomes a symlink to the dispatch script:
+To cause git to employ it, each of the hooks that git invokes becomes a symlink to `dispatch`:
 
     ...
     ├── applypatch-msg -> dispatch*
@@ -207,16 +204,16 @@ To cause git to employ the dispatch script, each of git's hooks becomes a symlin
     ├── pre-receive -> dispatch*
     └── update -> dispatch*
 
-The `dispatch` script provided by this project need not necessarily live in the repo that collects all your hook scripts, as shown here. One might prefer to install `dispatch` at the system level, for example a clone of this project at /opt/lib: `/opt/lib/modular-git-hooks/dispatch`, as I have shown in an earlier example. Or, your hook scripts repo might add this project as a git submodule.
+`dispatch` need not necessarily live in the repository that collects all your shared hooks, as it does above. One might prefer to install `dispatch` at the system level, for example a clone of this project at /opt/lib might result in symlinks to `/opt/lib/modular-git-hooks/dispatch`, as shown in an earlier example. Or, your hook scripts repository might add this project as a git submodule.
 
 
 ## Developing your own hooks
 
-The executable files in each `$hook.d` directory have the same semantics as normal git hooks: they are executable scripts or binaries like any other. They are passed the same arguments and data on standard input that git normally passes to its hooks.
+The executable files in each `$hook.d` directory have the same semantics as normal git hooks: they are executable scripts or binaries like any other. They are passed the same arguments and data on standard input that git normally passes to its hooks, as described by the [githooks(5) man page][].
 
 Any hooks that are not marked executable are ignored.
 
-Hooks whose filenames begin with `.` or end with any of the following are ignored: `.sample`, `.rpmsave`, `.rpmorig`, `.rpmnew`, `.swp`, `,v`, `~`, `,`, `.dpkg-old`, `.dpkg-dist`, `.dpkg-new`, `.dpkg-tmp`
+Hooks whose filenames begin with `.` or which end with any of the following are ignored: `.sample`, `.rpmsave`, `.rpmorig`, `.rpmnew`, `.swp`, `,v`, `~`, `,`, `.dpkg-old`, `.dpkg-dist`, `.dpkg-new`, `.dpkg-tmp`
 
 The `dispatch` script will set the following variables into the environment for all hooks:
 
@@ -231,6 +228,12 @@ The `dispatch` script will set the following variables into the environment for 
 - ...
 
 
+## To do
+
+- By design, `dispatch` runs all the hooks in the `(hook).d` directory regardless of the exit status of any one. Is there a need for a mechanism to allow a hook to discontinue running other hooks of the current type? I'd prefer to say "no," as assuming that all hooks are orthogonal allows a future feature where hooks run in parallel.
+
 ## License
 
 Copyright 2014 [Michael F. Lamb](http://datagrok.org). This software is released under the terms of the [GNU General Public License](http://www.gnu.org/licenses/gpl.html), version 3.
+
+[githooks(5) man page]: https://www.kernel.org/pub/software/scm/git/docs/githooks.html
