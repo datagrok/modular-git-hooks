@@ -120,10 +120,10 @@ A hook named `pre-commit.d/format-code.sh` is enabled by default. To disable it,
     git config --bool hook.pre-commit.d/format-code.sh.enabled false
     git config --bool hook.format-code.sh.enabled false
 
-A hook named `pre-commit.d/frobnicate.optional` is disabled by default. To enable it, use either of these commands:
+A hook named `pre-commit.d/format-code.sh.optional` is disabled by default. To enable it, use either of these commands:
 
-    git config --bool hook.pre-commit.d/frobnicate.optional.enabled true
-    git config --bool hook.frobnicate.enabled true
+    git config --bool hook.pre-commit.d/format-code.sh.optional.enabled true
+    git config --bool hook.format-code.sh.enabled true
 
 Note that if you have more than one type of hook named `format-code.sh`, the "short form" will enable or disable all types of them at once. This may be useful, for a set of cooperative hooks of multiple types that must be enabled or disabled simultaneously to work properly. Just ensure you don't name-conflict with other, unrelated hooks of different hook types.
 
