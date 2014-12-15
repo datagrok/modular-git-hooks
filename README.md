@@ -224,9 +224,7 @@ The `dispatch` script will set the following variables into the environment for 
 
 ## Similar tools
 
-- [pre-commit](http://pre-commit.com/) is a framework only for pre-commit hooks and requires you to modify configuration files.
-- ...
-
+- [pre-commit](http://pre-commit.com/) is a framework only for pre-commit hooks that requires you to modify yaml configuration files to manage hooks. It is part package-manager, and does a lot of work that we don't do to build out the infrastructure needed to run any requested hook.
 
 ## To do
 
