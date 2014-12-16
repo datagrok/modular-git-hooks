@@ -227,10 +227,14 @@ The `dispatch` script will set the following variables into the environment for 
 ## Similar tools
 
 - [pre-commit](http://pre-commit.com/) is a framework only for pre-commit hooks that requires you to modify yaml configuration files to manage hooks. It is part package-manager, and does a lot of work that we don't do to build out the infrastructure needed to run any requested hook.
+- [icefox/git-hooks](/icefox/git-hooks) includes a feature to search for hooks in multiple trees. Doesn't replay standard input to hooks, so `pre-push`, `pre-receive`, `post-receive`, and `post-rewrite` hooks will fail. Always returns success, so `pre-auto-gc`, `update`, `pre-receive`, `pre-push`, `commit-msg`, `prepare-commit-msg`, `pre-commit`, `pre-applypatch`, and `applypatch-msg` may not operate as intended. No means to individually disable discovered hooks.
+- [mcwhittemore/git-hook-modules](/mcwhittemore/git-hook-modules) requires node.js. Uses a custom-format configuration file.
 
 ## To do
 
 - By design, `dispatch` runs all the hooks in the `(hook).d` directory regardless of the exit status of any one. Is there a need for a mechanism to allow a hook to discontinue running other hooks of the current type? I'd prefer to say "no," as assuming that all hooks are orthogonal allows a future feature where hooks run in parallel.
+
+- Propose a patch to `git` that obviates the need for this tool. (See if someone has been done this already.)
 
 ## License
 
