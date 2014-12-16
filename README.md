@@ -176,7 +176,9 @@ By default, most git hooks are contained within a single executable file. When s
     ├── prepare-commit-msg*
     └── update*
 
-We want to perform potentially many different behaviors for each hook, and turn some of those behaviors off for certain repositories. If the hooks themselves are managed by git, we don't want git to complain about modified files when developers sharing the hooks repository enable and disable various functionality. So, we break each of the monolithic git hooks into a directory containing many modular hooks, and the original hook that git invokes is replaced with a (symlink to a) dispatcher. The result looks like this:
+We want to perform potentially many different behaviors for each hook, and turn some of those behaviors off for certain repositories. If the hooks themselves are managed by git, we don't want git to complain about modified files when developers sharing the hooks repository enable and disable various functionality.
+
+So, we break each of the monolithic git hooks into a directory containing many modular hooks, and the original hook that git invokes is replaced with a (symlink to a) dispatcher. The result looks like this:
 
     hooks/                  # After applying this mechanism
     ├── commit-msg.d/
@@ -187,7 +189,7 @@ We want to perform potentially many different behaviors for each hook, and turn 
     ├── dispatch*
     ...
 
-Each hook type gets its own directory containing hooks, each of which will be run by `dispatch` when appropriate.
+Above, each hook type gets its own directory containing hooks, each of which will be run by `dispatch` when appropriate. This should look familiar to anyone who has used Debian's `run-parts` tool.
 
 To cause git to employ it, each of the hooks that git invokes becomes a symlink to `dispatch`:
 
