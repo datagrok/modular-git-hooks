@@ -242,6 +242,8 @@ The `dispatch` script will set the following variables into the environment for 
 
 - Explore a re-implementation in ~~C~~ any fast, compiled language with minimal run-time dependencies, that can produce binaries for use with old (CentOS 5) and recent Linux distributions, as well as OS X and BSD. Maybe even windows? Study how git itself is built, and mimic that.
 
+- Advertise this project's existence on HN, Reddit, etc. (After test suite and verified support for OS X)
+
 ## License
 
 Copyright 2014 [Michael F. Lamb](http://datagrok.org). This software is released under the terms of the [GNU General Public License](http://www.gnu.org/licenses/gpl.html), version 3.
