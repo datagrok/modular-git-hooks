@@ -39,7 +39,7 @@ dispatch_abs="$(dirname "$(readlink -f "$0")")/dispatch"
 	exit 2
 	}
 hooks_abs="$(readlink -f "$hooks_dir")"
-dispatch="${dispatch_abs%"$hooks_abs/"}"
+dispatch="${dispatch_abs##"$hooks_abs/"}"
 
 # Create hooks if nonexistent, but don't die when extant.
 for hook in \
