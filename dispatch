@@ -69,9 +69,8 @@ head_hash=$(git rev-parse --quiet --verify HEAD) || head_hash="$empty_tree"
 export head_hash
 
 case "$hook_type" in
-	pre-push|pre-receive|post-receive)
-		# These hooks are unique in that they are provided by git with data on
-		# standard input. Dump this data into a temporary file, and replay it
+	*)
+		# Dump this data into a temporary file, and replay it
 		# as standard input to each of the hooks.
 		tempfile="$(mktemp)"
 		trap 'rm -f "$tempfile"' EXIT
