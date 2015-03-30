@@ -35,6 +35,9 @@
 # being called; the expectation is that each of the git hooks will exist simply
 # as a symlink to this script.
 hook_type="$(basename $0)"
+if [ "$TERM" = "cygwin" ]; then
+	hook_type=$GIT_HOOK_TYPE
+fi
 if [ "$hook_type" = "dispatch" ]; then
 	echo 2>&1 "'$hook_type' should not be executed directly; instead, symlink a githook to it and let git invoke it."
 	exit 1
@@ -83,6 +86,7 @@ exit_status=0
 for hook in "$GIT_DIR/hooks/${hook_type}.d"/*; do
 	# skip non-executable and non-files
 	[ -f "$hook" -a -x "$hook" ] || continue
+
 	# skip bad suffixes
 	for ext in $bad_suffixes; do
 		[ "${hook%$ext}" = "${hook}" ] || continue 2
@@ -100,6 +104,7 @@ for hook in "$GIT_DIR/hooks/${hook_type}.d"/*; do
 
 	# run the hook with the args git gave us and if $tempfile exists, provide
 	# it on standard input.
+
 	if [ "$tempfile" ]; then
 		"$hook" "$@" <"$tempfile"
 	else
