@@ -29,6 +29,8 @@ Most hooks intended for standalone use should work, unmodified, when placed with
 
 ## Setup
 
+> Note to Cygwin users: [a bug in Cygwin 1.7.35](https://cygwin.com/ml/cygwin/2015-03/msg00270.html) breaks this software. Please upgrade to Cygwin 2.0.0 or higher.
+
 Until I have this packaged up for easy installation in various operating systems, there are a variety of ways you can use this code:
 
 Basically:
