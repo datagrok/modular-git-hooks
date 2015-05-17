@@ -97,7 +97,7 @@ for hook in "$GIT_DIR/hooks/${hook_type}.d"/*; do
 	else run_default="false" # hook ends in ".optional"
 	fi
 	hook_short="${hook_short#"$GIT_DIR/hooks/"}"
-	[ "$(git config --bool hook.${hook_short}.enable || git config --bool hook.${hook_short##*/}.enable || echo $run_default)" = "true" ] || continue
+	[ "$(git config --bool hook.${hook_short}.enabled || git config --bool hook.${hook_short##*/}.enabled || echo $run_default)" = "true" ] || continue
 
 	# run the hook with the args git gave us and if $tempfile exists, provide
 	# it on standard input.
