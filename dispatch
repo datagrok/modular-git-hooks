@@ -15,7 +15,7 @@
 
 # This runs several scripts per git hook instead of one. This lets us organize
 # our git hooks into small, discrete, language-agnostic executables. It
-# somewhat apes Debian's 'ruu parts' in its operation, but does not employ it
+# somewhat apes Debian's 'run-parts' in its operation, but does not employ it
 # directly.
 
 # Variable names used in this script:
@@ -36,7 +36,7 @@
 # as a symlink to this script.
 hook_type="$(basename $0)"
 if [ "$hook_type" = "dispatch" ]; then
-	echo 2>&1 "'$hook_type' should not be executed directly; instead, symlink a githook to it and let git invoke it."
+	echo >&2 "'$hook_type' should not be executed directly; instead, symlink a githook to it and let git invoke it."
 	exit 1
 fi
 
@@ -68,6 +68,35 @@ bad_suffixes="$bad_suffixes .sample"
 head_hash=$(git rev-parse --quiet --verify HEAD) || head_hash="$empty_tree"
 export head_hash
 
+# FIXME DEPRECATED bugfix issue #5: previously, this script examined
+# "hook.enable" not "hook.enabled", contrary to what it says in the
+# documentation.
+git config --local --bool --get-regexp '^hook\..*\.enable$' | while read key val; do
+	if
+		git config --local --unset "${key}"
+	then
+		if
+			git config --local "${key}d" >/dev/null
+		then
+			git config --local "${key}d" "${val}"
+			echo >&2 "Renamed deprecated configuration: ${key} -> ${key}d"
+		else
+			echo >&2 "Removed deprecated configuration: ${key} = ${value}"
+		fi
+	else
+		cat >&2 <<-EOF
+		$0: Warning: this repository contains the deprecated configuration
+		${key}. Could not automatically migrate the configuration for this
+		repository. You will have to run these commands yourself to configure
+		hooks properly:
+
+		git config --local --bool ${key}d ${val};
+		git config --local --unset ${key}
+		EOF
+		break
+	fi
+done
+
 case "$hook_type" in
 	pre-push|pre-receive|post-receive|post-rewrite)
 		# These hooks are unique in that they are provided by git with data on
@@ -98,34 +127,14 @@ for hook in "$GIT_DIR/hooks/${hook_type}.d"/*; do
 	fi
 	hook_short="${hook_short#"$GIT_DIR/hooks/"}"
 
-	# FIXME DEPRECATED bugfix issue #5: previously, this script examined
-	# "hook.enable" not "hook.enabled", contrary to what it says in the
-	# documentation. Change to use ".enabled", but try not to break existing
-	# users. If the user is using .enable and not .enabled, and if the
-	# .gitconfig file is writable, migrate their configuration for them. if
-	# both are present, warn.
-	#
-	# This check and migration causes some extra work on every hook invocation
-	# and will be completely removed in the future.
-	for configkey in "hook.${hook_short}" "hook.${hook_short##*/}"; do
-		if [ "$(git config --bool ${configkey}.enable)" ]; then
-			if [ "$(git config --bool ${configkey}.enabled)" ]; then
-				# both .enable and .enabled are present; the user has to fix
-				# this themselves.
-				echo "$0: Warning: '${configkey}.enable' is deprecated and ignored; remove it. Using 'hook.${hook_short}.enabled'." >&2
-			elif
-				# we may modify the git configuration, to migrate .enable ->
-				# .enabled automatically
-			else
-				# .enable is set but we can't modify git config
-				echo "$0: Warning: '${configkey}.enable' is deprecated and will be changed to '${configkey}.enabled'." >&2
-
-			fi
-		fi
-	done
-
 	# determine if this hook is enabled
-	[ "$(git config --bool hook.${hook_short}.enabled || git config --bool hook.${hook_short##*/}.enabled || echo $run_default)" = "true" ] || continue
+	# FIXME "hook.*.enable" is deprecated; remove in next release.
+	[ "$(
+		git config --bool hook.${hook_short}.enabled ||
+		git config --bool hook.${hook_short##*/}.enabled ||
+		git config --bool hook.${hook_short}.enable ||
+		git config --bool hook.${hook_short##*/}.enable ||
+		echo $run_default)" = "true" ] || continue
 
 	# run the hook with the args git gave us and if $tempfile exists, provide
 	# it on standard input.
@@ -135,7 +144,7 @@ for hook in "$GIT_DIR/hooks/${hook_type}.d"/*; do
 		"$hook" "$@"
 	fi || {
 		exit_status=$?
-		echo "$0: $hook_short exited with return code $exit_status" >&2
+		echo >&2 "$0: $hook_short exited with return code $exit_status"
 	}
 done
 
@@ -167,7 +176,7 @@ case "$hook_type" in
 		;;
 	update)
 		if [ $exit_status -ne 0 ]; then
-			echo "ERROR: aborting update to $1 due to previous errors." >&2
+			echo >&2 "ERROR: aborting update to $1 due to previous errors."
 		fi
 esac
 
