@@ -6,7 +6,7 @@ set -e
 
 # create a temporary directory for a test repo, clean up
 # when we're done regardless of how we fail.
-temprepo="$(mktemp -d)"
+temprepo="$(mktemp -d "${TMPDIR:-/tmp}"/tmp.XXXXXXXXXX)"
 trap "rm -rf '$temprepo'" EXIT
 
 # git init that repo and chdir to it

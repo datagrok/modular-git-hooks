@@ -6,8 +6,9 @@ set -e
 # it. Set up dispatch in both with install-dispatch.
 # Ensure symlinks were created as expected.
 
-upstream="$(mktemp -d)"
-clone="$(mktemp -d)"
+
+upstream="$(mktemp -d "${TMPDIR:-/tmp}"/tmp.XXXXXXXXXX)"
+clone="$(mktemp -d "${TMPDIR:-/tmp}"/tmp.XXXXXXXXXX)"
 trap "rm -rf '$upstream' '$clone'" EXIT
 
 git init --bare "$upstream"
