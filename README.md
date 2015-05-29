@@ -31,7 +31,11 @@ Most hooks intended for standalone use should work, unmodified, when placed with
 
 ## Setup
 
-> Note to Cygwin users: [a bug in Cygwin 1.7.35](https://cygwin.com/ml/cygwin/2015-03/msg00270.html) breaks this software. Please upgrade to Cygwin 2.0.0 or higher.
+> **Note to Microsoft Windows users:** on Windows, this software requires either [Cygwin version 2.0.0 or higher](https://www.cygwin.com/), or [Git-for-Windows version 2.1 or higher](http://git-for-windows.github.io/).
+>
+> Versions of [Cygwin 1.7.35 and older contain a bug](https://cygwin.com/ml/cygwin/2015-03/msg00270.html) that prevents this software from working properly.
+>
+> Versions of Git for Windows prior to 2.x include a "Git Bash" built on [msysGit](https://msysgit.github.io/), which is [built on](https://github.com/msysgit/msysgit#the-difference-between-msys-and-mingw), and inherits the Cygwin bug mentioned above. See the [git-for-windows FAQ](https://github.com/git-for-windows/git/wiki/FAQ) for more information about msysGit versus Git-for-Windows.
 
 Until I have this packaged up for easy installation in various operating systems, there are a variety of ways you can use this code:
 
@@ -242,7 +246,9 @@ The `dispatch` script will set the following variables into the environment for 
 
 - Explore a re-implementation in ~~C~~ any fast, compiled language with minimal run-time dependencies, that can produce binaries for use with old (CentOS 5) and recent Linux distributions, as well as OS X and BSD. Maybe even windows? Study how git itself is built, and mimic that.
 
-- Advertise this project's existence on HN, Reddit, etc. (After test suite and verified support for OS X)
+- Improve the suite of unit tests.
+
+- Begin [semver](http://semver.org) versioning, and keep a CHANGELOG.
 
 ## License
 
