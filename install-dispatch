@@ -71,32 +71,32 @@ do
 	hook_fn_rl="$(canonicalize "$hook_fn")"
 	if [ -f "$hook_fn" ]; then
 		if [ -d "$hooks_dir/$hook.d" ]; then
-			echo "skip   $hook.d (exists)" >&2
+			echo "skip   $hook.d (exists)"
 		else
-			echo "create $hook.d/" >&2
+			echo "create $hook.d/"
 			mkdir "$hooks_dir/$hook.d"
 		fi
 		if [ -h "$hook_fn" -a "${hook_fn_rl%dispatch}" != "$hook_fn_rl" ]; then
 			# If the existing hook is a symlink to dispatch, delete it (we'll
 			# replace it with ours.) (Maybe the user wants to update the path
 			# to their dispatch.)
-			echo "delete $hook (updating link)" >&2
+			echo "delete $hook (updating link)"
 			rm "$hook_fn"
 		elif [ -h "$hook_fn" -a "${hook_fn_rl#.}" != "$hook_fn_rl" ]; then
 			# If it points elsewhere, relative, delete and create replacement
 			# in our hooks directory prepended with '../'.
 			# FIXME if $hooks_dir itself is a symlink elsewhere, this will
 			# break!
-			echo "move   $hook -> $hook.d/$hook.orig (updating symlink)" >&2
+			echo "move   $hook -> $hook.d/$hook.orig (updating symlink)"
 			ln -s "../$hook_fn_rl" "$hooks_dir/$hook.d/$hook.orig"
 			rm "$hook_fn"
 		else
 			# Otherwise it's a symlink to an absolute path, so just treat it
 			# like a file and move it into our hooks directory.
-			echo "move   $hook -> $hook.d/$hook.orig" >&2
+			echo "move   $hook -> $hook.d/$hook.orig"
 			mv "$hook_fn" "$hooks_dir/$hook.d/$hook.orig"
 		fi
 	fi
-	echo "link   $hook -> dispatch" >&2
+	echo "link   $hook -> dispatch"
 	ln -s "$dispatch" "$hook_fn"
 done

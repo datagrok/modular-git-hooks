@@ -1,0 +1,9 @@
+Tests to write: 
+
+- repo with locally installed dispatch can be mv'd
+- repo with externally installed dispatch can be mv'd
+- defaults for running or not based on filenames works
+- configuration for running or not works, overrides filename-based defaults
+- "enable" configurations become "enabled"
+- nothing assplodes if config is non-editable when trying to migrate enable->enabled
+- 
