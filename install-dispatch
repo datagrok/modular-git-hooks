@@ -18,6 +18,17 @@
 # TODO: option to set up all (hook).d directories even if they'd be empty.
 # TODO: option to manually specify path to dispatch, overriding our heuristic
 
+# Work around lack of 'readlink -f' in OSX. (OSX users, upgrade to a decent
+# development environment plz kthx)
+case "$(uname -s)" in
+	"Darwin")
+		canonicalize() {
+			python -c 'import sys,os;print(os.path.realpath(sys.argv[1]))' "$1"
+		}
+		;;
+	*) canonicalize() { readlink -f "$1"; } ;;
+esac
+
 if git_dir="$(git rev-parse --git-dir)"; then
 	hooks_dir="$git_dir/hooks"
 	# create the hooks directory if it doesn't exist.
@@ -32,13 +43,17 @@ else
 fi
 
 # If 'dispatch' lives somewhere within git_dir/hooks, we must relative-link to
-# it. Otherwise, we must use an absolute path.
-dispatch_abs="$(dirname "$(readlink -f "$0")")/dispatch"
+# it so it can move with the containing repo. Otherwise, we must use an
+# absolute path so the link doesn't break if the containing repo is moved.
+#
+# First, an heuristic to locate dispatch; assume it is in the same directory as
+# this script.
+dispatch_abs="$(dirname "$(canonicalize "$0")")/dispatch"
 [ -e "$dispatch_abs" ] || {
 	echo "Error: could not find dispatch at expected location, $dispatch_abs."
 	exit 2
 	}
-hooks_abs="$(readlink -f "$hooks_dir")"
+hooks_abs="$(canonicalize "$hooks_dir")"
 dispatch="${dispatch_abs##"$hooks_abs/"}"
 
 # Create hooks if nonexistent, but don't die when extant.
@@ -53,7 +68,7 @@ do
 	# easily.) try to detect if we're running against an already-configured
 	# directory and behave appropriately.
 	hook_fn="$hooks_dir/$hook"
-	hook_fn_rl="$(readlink "$hook_fn")"
+	hook_fn_rl="$(canonicalize "$hook_fn")"
 	if [ -f "$hook_fn" ]; then
 		if [ -d "$hooks_dir/$hook.d" ]; then
 			echo "skip   $hook.d (exists)" >&2

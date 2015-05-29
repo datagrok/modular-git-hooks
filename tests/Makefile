@@ -7,10 +7,15 @@
 
 testscripts=$(wildcard t[0-9][0-9][0-9][0-9]*)
 testresults=$(patsubst %,test-results/%.out,$(testscripts))
-dispatch=$(shell readlink -f ../dispatch)
-installdispatch=$(shell readlink -f ../install-dispatch)
-export dispatch
-export installdispatch
+
+# Work around lack of 'readlink -f' in OSX.
+ifeq ($(shell uname -s), Darwin)
+	canonicalize:=python -c 'import sys,os;print(os.path.realpath(sys.argv[1]))'
+else
+	canonicalize:=readlink -f
+endif
+export dispatch:=$(shell $(canonicalize) ../dispatch)
+export installdispatch:=$(shell $(canonicalize) ../install-dispatch)
 
 tests: tests_preamble $(testresults)
 	# All tests completed successfully.
