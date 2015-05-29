@@ -1,5 +1,7 @@
 # modular-git-hooks
 
+[![Build Status](https://travis-ci.org/datagrok/modular-git-hooks.svg?branch=master)](https://travis-ci.org/datagrok/modular-git-hooks)
+
 Sometimes, you want to perform several different actions in one git hook. For example, you might find several useful pre-commit hooks online, all of which you would like to enable in your git repository.
 
 One fragile way to accomplish this is to copy-and-paste all of the code from those various pre-commit hooks into the single hook that git requires, named `hooks/pre-commit`. This is, of course, impossible if some of those hooks are implemented in differing languages.
@@ -237,10 +239,6 @@ The `dispatch` script will set the following variables into the environment for 
 - By design, `dispatch` runs all the hooks in the `(hook).d` directory regardless of the exit status of any one. Is there a need for a mechanism to allow a hook to discontinue running other hooks of the current type? I'd prefer to say "no," as assuming that all hooks are orthogonal allows a future feature where hooks run in parallel.
 
 - Propose a patch to `git` that obviates the need for this tool. (See if someone has been done this already.)
-
-- Build an automated test suite; determine compatibility with various versions of `dash`, and `bash` (invoked as `sh` so `--posix`), etc.
-
-- Figure out what, if anything, needs to be changed to support OS X. Decide if it's worth the trouble.
 
 - Explore a re-implementation in ~~C~~ any fast, compiled language with minimal run-time dependencies, that can produce binaries for use with old (CentOS 5) and recent Linux distributions, as well as OS X and BSD. Maybe even windows? Study how git itself is built, and mimic that.
 
