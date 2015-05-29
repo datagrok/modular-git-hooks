@@ -1,0 +1,22 @@
+#!/bin/sh
+set -e
+
+# Exercise some basics: create a git repo, clean up when
+# we're done.
+
+# create a temporary directory for a test repo, clean up
+# when we're done regardless of how we fail.
+temprepo="$(mktemp -d "${TMPDIR:-/tmp}"/tmp.XXXXXXXXXX)"
+trap "rm -rf '$temprepo'" EXIT
+
+# git init that repo and chdir to it
+git init "$temprepo"
+cd "$temprepo"
+
+# run some commands, none of which should fail.
+git status
+ls .git
+
+# use the shell "test" operator together with "set -e" to make some
+# "assertions"
+[ -d .git/hooks ]

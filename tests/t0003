@@ -1,0 +1,24 @@
+#!/bin/sh
+set -e
+[ "$DEBUG" ] && set -x
+
+# Quick functional test. Create a bare repo and clone
+# it. Set up dispatch in both with install-dispatch.
+# Ensure symlinks were created as expected.
+
+
+upstream="$(mktemp -d "${TMPDIR:-/tmp}"/tmp.XXXXXXXXXX)"
+clone="$(mktemp -d "${TMPDIR:-/tmp}"/tmp.XXXXXXXXXX)"
+trap "rm -rf '$upstream' '$clone'" EXIT
+
+git init --bare "$upstream"
+git clone "$upstream" "$clone"
+(cd "$clone"; touch foo; git add foo; git commit -m "initial commit"; git push)
+
+# Run install-dispatch in bare upstream
+(cd "$upstream"; "$installdispatch")
+test "$upstream/hooks/update" -ef "$dispatch"
+
+# Run install-dispatch in clone
+(cd "$clone"; "$installdispatch")
+test "$upstream/hooks/pre-commit" -ef "$dispatch"

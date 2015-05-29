@@ -18,6 +18,17 @@
 # TODO: option to set up all (hook).d directories even if they'd be empty.
 # TODO: option to manually specify path to dispatch, overriding our heuristic
 
+# Work around lack of 'readlink -f' in OSX. (OSX users, upgrade to a decent
+# development environment plz kthx)
+case "$(uname -s)" in
+	"Darwin")
+		canonicalize() {
+			python -c 'import sys,os;print(os.path.realpath(sys.argv[1]))' "$1"
+		}
+		;;
+	*) canonicalize() { readlink -f "$1"; } ;;
+esac
+
 if git_dir="$(git rev-parse --git-dir)"; then
 	hooks_dir="$git_dir/hooks"
 	# create the hooks directory if it doesn't exist.
@@ -32,13 +43,17 @@ else
 fi
 
 # If 'dispatch' lives somewhere within git_dir/hooks, we must relative-link to
-# it. Otherwise, we must use an absolute path.
-dispatch_abs="$(dirname "$(readlink -f "$0")")/dispatch"
+# it so it can move with the containing repo. Otherwise, we must use an
+# absolute path so the link doesn't break if the containing repo is moved.
+#
+# First, an heuristic to locate dispatch; assume it is in the same directory as
+# this script.
+dispatch_abs="$(dirname "$(canonicalize "$0")")/dispatch"
 [ -e "$dispatch_abs" ] || {
 	echo "Error: could not find dispatch at expected location, $dispatch_abs."
 	exit 2
 	}
-hooks_abs="$(readlink -f "$hooks_dir")"
+hooks_abs="$(canonicalize "$hooks_dir")"
 dispatch="${dispatch_abs##"$hooks_abs/"}"
 
 # Create hooks if nonexistent, but don't die when extant.
@@ -53,35 +68,35 @@ do
 	# easily.) try to detect if we're running against an already-configured
 	# directory and behave appropriately.
 	hook_fn="$hooks_dir/$hook"
-	hook_fn_rl="$(readlink "$hook_fn")"
+	hook_fn_rl="$(canonicalize "$hook_fn")"
 	if [ -f "$hook_fn" ]; then
 		if [ -d "$hooks_dir/$hook.d" ]; then
-			echo "skip   $hook.d (exists)" >&2
+			echo "skip   $hook.d (exists)"
 		else
-			echo "create $hook.d/" >&2
+			echo "create $hook.d/"
 			mkdir "$hooks_dir/$hook.d"
 		fi
 		if [ -h "$hook_fn" -a "${hook_fn_rl%dispatch}" != "$hook_fn_rl" ]; then
 			# If the existing hook is a symlink to dispatch, delete it (we'll
 			# replace it with ours.) (Maybe the user wants to update the path
 			# to their dispatch.)
-			echo "delete $hook (updating link)" >&2
+			echo "delete $hook (updating link)"
 			rm "$hook_fn"
 		elif [ -h "$hook_fn" -a "${hook_fn_rl#.}" != "$hook_fn_rl" ]; then
 			# If it points elsewhere, relative, delete and create replacement
 			# in our hooks directory prepended with '../'.
 			# FIXME if $hooks_dir itself is a symlink elsewhere, this will
 			# break!
-			echo "move   $hook -> $hook.d/$hook.orig (updating symlink)" >&2
+			echo "move   $hook -> $hook.d/$hook.orig (updating symlink)"
 			ln -s "../$hook_fn_rl" "$hooks_dir/$hook.d/$hook.orig"
 			rm "$hook_fn"
 		else
 			# Otherwise it's a symlink to an absolute path, so just treat it
 			# like a file and move it into our hooks directory.
-			echo "move   $hook -> $hook.d/$hook.orig" >&2
+			echo "move   $hook -> $hook.d/$hook.orig"
 			mv "$hook_fn" "$hooks_dir/$hook.d/$hook.orig"
 		fi
 	fi
-	echo "link   $hook -> dispatch" >&2
+	echo "link   $hook -> dispatch"
 	ln -s "$dispatch" "$hook_fn"
 done

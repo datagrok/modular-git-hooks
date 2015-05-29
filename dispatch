@@ -73,7 +73,7 @@ case "$hook_type" in
 		# These hooks are unique in that they are provided by git with data on
 		# standard input. Dump this data into a temporary file, and replay it
 		# as standard input to each of the hooks.
-		tempfile="$(mktemp)"
+		tempfile="$(mktemp "${TMPDIR:-/tmp}"/tmp.XXXXXXXXXX)"
 		trap 'rm -f "$tempfile"' EXIT
 		cat > "$tempfile"
 		;;
