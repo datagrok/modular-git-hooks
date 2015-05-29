@@ -24,8 +24,11 @@ tests_preamble:
 	# Tests beginning. Tests have failed unless you see the text "all tests
 	# completed successfully" at the end of execution.
 
+# Run each test that has been modified since the last output; capture their
+# output to files. If any fail, re-run with a DEBUG flag set and don't capture
+# output (for use with Travis CI, etc.)
 test-results/%.out: ./% test-results $(dispatch) $(installdispatch) Makefile
-	./$< >$@ 2>$(@:.out=.err)
+	./$< >$@ 2>$(@:.out=.err) || DEBUG=1 ./$<
 
 test-results:
 	mkdir test-results
