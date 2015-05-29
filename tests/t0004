@@ -1,0 +1,20 @@
+#!/bin/sh
+
+# Exercise .enable->.enabled migrator
+. ./test-lib.sh
+
+# FIXME TODO
+exit 0
+
+
+git init --bare upstream
+git clone upstream clone
+(cd clone; touch foo; git add foo; git commit -m "initial commit"; git push)
+
+# Run install-dispatch in bare upstream
+(cd upstream; "$mgh_build_dir/install-dispatch")
+test upstream/hooks/update -ef "$mgh_build_dir/dispatch"
+
+# Run install-dispatch in clone
+(cd clone; "$mgh_build_dir/install-dispatch")
+test clone/hooks/pre-commit -ef "$mgh_build_dir/dispatch"
