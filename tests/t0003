@@ -3,7 +3,6 @@
 # Quick functional test. Create a bare repo and clone
 # it. Set up dispatch in both with install-dispatch.
 # Ensure symlinks were created as expected.
-. ./test-lib.sh
 
 git init --bare upstream.git
 git clone upstream.git clone

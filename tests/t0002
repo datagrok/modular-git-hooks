@@ -2,7 +2,6 @@
 
 # Exercise some basics: create a git repo, clean up when
 # we're done.
-. ./test-lib.sh
 
 # git init that repo and chdir to it
 git init temprepo
