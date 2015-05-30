@@ -50,7 +50,7 @@ cat > expected.out <<- EOF
 	./hooks/post-update.d/a refs/heads/master
 EOF
 
-(cd clone; echo foo >> foo.txt; git add foo.txt; git commit -m "initial commit"; git push)
+(cd clone; echo foo >> foo.txt; git add foo.txt; git commit -m "initial commit"; git push origin master)
 # the hash output on line 6 could be anything, so replace it to make the diff work.
 sed -i -e '/hooks\/update\.d/s/ [^ ]* [^ ]*$//' expected.out demohook.out
 diff expected.out demohook.out
@@ -71,7 +71,7 @@ cat > expected.out <<- EOF
 	./hooks/post-update.d/b.optional refs/heads/master
 EOF
 
-(cd clone; echo foo >> foo.txt; git add foo.txt; git commit -m "another commit"; git push)
+(cd clone; echo foo >> foo.txt; git add foo.txt; git commit -m "another commit"; git push origin master)
 # the hash output on line 6 could be anything, so replace it to make the diff work.
 sed -i -e '/hooks\/update\.d/s/ [^ ]* [^ ]*$//' expected.out demohook.out
 diff expected.out demohook.out
