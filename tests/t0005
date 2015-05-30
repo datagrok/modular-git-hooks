@@ -1,0 +1,14 @@
+#!/usr/bin/python
+
+# Python unit test hello world. Exercise some basics to demonstrate that we can
+# unit test with more than just shell script.
+
+import subprocess
+import os
+# git init that repo and chdir to it
+
+if __name__ == '__main__':
+    subprocess.check_call(['git', 'init', 'temprepo'])
+    os.chdir('temprepo')
+    subprocess.check_call(['git', 'status'])
+    assert os.path.isdir('.git/hooks')
