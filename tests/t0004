@@ -1,0 +1,148 @@
+#!/bin/sh
+set -e
+
+# Exercise configuration-based enabling of hooks and disabled by default with
+# .optional 
+
+# TODO reduce some of the copypasta in here
+# TODO break this huge script up into multiple tests after extracting common parts
+
+git init --bare upstream.git
+git clone upstream.git clone
+
+(cd upstream.git; "$mgh_build_dir/install-dispatch")
+(cd clone; "$mgh_build_dir/install-dispatch")
+
+rm upstream.git/hooks/*.sample clone/.git/hooks/*.sample
+
+# set up a bunch of dummy hooks in each repo so we can inspect when they fire.
+
+cat > demohook <<-EOF
+	#!/bin/sh
+	echo "\$0" "\$@" >> $(pwd -P)/demohook.out
+	EOF
+chmod +x demohook
+
+for hook_type in \
+	applypatch-msg commit-msg post-applypatch post-checkout post-commit \
+	post-merge post-receive post-rewrite post-update pre-applypatch \
+	pre-auto-gc pre-commit pre-push pre-rebase pre-receive \
+	prepare-commit-msg update
+do
+	for hook_dir in \
+		upstream.git/hooks/${hook_type}.d \
+		clone/.git/hooks/${hook_type}.d
+	do
+		mkdir $hook_dir
+		cp demohook $hook_dir/a
+		cp demohook $hook_dir/b.optional
+	done
+done
+
+rm -f demohook.out
+cat > expected.out <<- EOF
+	.git/hooks/pre-commit.d/a
+	.git/hooks/prepare-commit-msg.d/a .git/COMMIT_EDITMSG message
+	.git/hooks/commit-msg.d/a .git/COMMIT_EDITMSG
+	.git/hooks/post-commit.d/a
+	./hooks/pre-receive.d/a
+	./hooks/update.d/a refs/heads/master 0000000000000000000000000000000000000000 (hash)
+	./hooks/post-receive.d/a
+	./hooks/post-update.d/a refs/heads/master
+EOF
+
+(cd clone; echo foo >> foo.txt; git add foo.txt; git commit -m "initial commit"; git push origin master)
+# the hash output on line 6 could be anything, so replace it to make the diff work.
+sed -i -e '/hooks\/update\.d/s/ [^ ]* [^ ]*$//' expected.out demohook.out
+diff expected.out demohook.out
+
+#
+# Now, disable hook "a", and enable hook "b".
+#
+echo "*** disable hook a, enable hook b"
+for d in upstream.git clone/.git; do
+	git -C $d config --bool hook.a.enabled false
+	git -C $d config --bool hook.b.enabled true
+done
+
+rm -f demohook.out
+cat > expected.out <<- EOF
+	.git/hooks/pre-commit.d/b.optional
+	.git/hooks/prepare-commit-msg.d/b.optional .git/COMMIT_EDITMSG message
+	.git/hooks/commit-msg.d/b.optional .git/COMMIT_EDITMSG
+	.git/hooks/post-commit.d/b.optional
+	./hooks/pre-receive.d/b.optional
+	./hooks/update.d/b.optional refs/heads/master 0000000000000000000000000000000000000000 (hash)
+	./hooks/post-receive.d/b.optional
+	./hooks/post-update.d/b.optional refs/heads/master
+EOF
+
+(cd clone; echo foo >> foo.txt; git add foo.txt; git commit -m "another commit"; git push origin master)
+# the hash output on line 6 could be anything, so replace it to make the diff work.
+sed -i -e '/hooks\/update\.d/s/ [^ ]* [^ ]*$//' expected.out demohook.out
+diff expected.out demohook.out
+
+#
+# Now, enable hook "a" (by unsetting) but disable some specific ones, and
+# disable hook "b" (by unsetting) but enable some specific ones.
+#
+echo "*** unset hooks a (enable), b (disable), enable pre-commit/b, update/b"
+for d in upstream.git clone/.git; do
+	git -C $d config --unset hook.a.enabled
+	git -C $d config --unset hook.b.enabled
+	git -C $d config --bool hook.pre-commit.d/a.enabled false
+	git -C $d config --bool hook.pre-commit.d/b.enabled true
+	git -C $d config --bool hook.update.d/a.enabled false
+	git -C $d config --bool hook.update.d/b.enabled true
+done
+
+rm -f demohook.out
+cat > expected.out <<- EOF
+	.git/hooks/pre-commit.d/b.optional
+	.git/hooks/prepare-commit-msg.d/a .git/COMMIT_EDITMSG message
+	.git/hooks/commit-msg.d/a .git/COMMIT_EDITMSG
+	.git/hooks/post-commit.d/a
+	./hooks/pre-receive.d/a
+	./hooks/update.d/b.optional refs/heads/master 0000000000000000000000000000000000000000 (hash)
+	./hooks/post-receive.d/a
+	./hooks/post-update.d/a refs/heads/master
+EOF
+
+(cd clone; echo foo >> foo.txt; git add foo.txt; git commit -m "another commit"; git push origin master)
+# the hash output on line 6 could be anything, so replace it to make the diff work.
+sed -i -e '/hooks\/update\.d/s/ [^ ]* [^ ]*$//' expected.out demohook.out
+diff expected.out demohook.out
+
+#
+# Now, disable a couple more of 'a' and enable a couple more of 'b', but
+# incorrectly use 'enable' not 'enabled'. Ensure it gets modified properly.
+#
+echo "*** additionally enable prepare-commit-msg/b, post-receive/b"
+for d in upstream.git clone/.git; do
+	git -C $d config --bool hook.prepare-commit-msg.d/a.enable false
+	git -C $d config --bool hook.prepare-commit-msg.d/b.enable true
+	git -C $d config --bool hook.post-receive.d/a.enable false
+	git -C $d config --bool hook.post-receive.d/b.enable true
+done
+set -x
+rm -f demohook.out
+cat > expected.out <<- EOF
+	.git/hooks/pre-commit.d/b.optional
+	.git/hooks/prepare-commit-msg.d/b.optional .git/COMMIT_EDITMSG message
+	.git/hooks/commit-msg.d/a .git/COMMIT_EDITMSG
+	.git/hooks/post-commit.d/a
+	./hooks/pre-receive.d/a
+	./hooks/update.d/b.optional refs/heads/master 0000000000000000000000000000000000000000 (hash)
+	./hooks/post-receive.d/b.optional
+	./hooks/post-update.d/a refs/heads/master
+EOF
+
+(cd clone; echo foo >> foo.txt; git add foo.txt; git commit -m "another commit"; git push origin master)
+# the hash output on line 6 could be anything, so replace it to make the diff work.
+sed -i -e '/hooks\/update\.d/s/ [^ ]* [^ ]*$//' expected.out demohook.out
+diff expected.out demohook.out
+# there should be no more "enable"s left.
+set -x
+for d in upstream.git clone/.git; do
+	git -C $d config --bool --get-regexp 'hook\..*\.enable$' && exit 1 || echo ok
+done

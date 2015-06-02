@@ -1,0 +1,62 @@
+#!/bin/sh
+
+#
+# A unit test wrapper for tests in modular-git-hooks' test suite
+#
+# Copyright 2015 Michael F. Lamb <http://datagrok.org>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# License: GPLv3 http://www.gnu.org/licenses/gpl.html
+#
+
+# This script wraps unit tests to set up a semi-sandbox environment for their
+# execution and respond to their exit statuses.
+
+# FIXME It creates a temporary directory, sets it up for automatic removal, and
+# changes to that directory. This way, each unit test may make a mess in its
+# working directory and not worry about cleanup.
+
+set -e
+
+[ "$mgh_build_dir" ] || {
+	echo "Error: test scripts expect \$mgh_build_dir to be set in the environment."
+	exit 1
+}
+
+unset HOME
+unset XDG_CONFIG_HOME
+unset CDPATH
+unset GREP_OPTIONS
+unset UNZIP
+export GIT_AUTHOR_EMAIL=author@example.com
+export GIT_AUTHOR_NAME='A U Thor'
+export GIT_COMMITTER_EMAIL=committer@example.com
+export GIT_COMMITTER_NAME='C O Mitter'
+export GIT_MERGE_VERBOSITY=5
+export GIT_MERGE_AUTOEDIT=no
+
+test_dir="$(pwd -P)"
+
+cd "$(mktemp -d "${TMPDIR:-/tmp}"/tmp.XXXXXXXXXX)"
+export TRASH_DIRECTORY="$(pwd -P)"
+export HOME="$TRASH_DIRECTORY"
+
+if
+	"$test_dir"/"$@" >"$test_dir/test-results/$1.out" 2>"$test_dir/test-results/$1.err"
+then
+	# Successful test; clean up.
+	rm -rf "$TRASH_DIRECTORY"
+else
+	status=$?
+	# Failed test; leave trash around for debugging.
+	echo "# Test $1 failed; remove '$TRASH_DIRECTORY' manually."
+	echo "------ $1 stdout ------"
+	cat "$test_dir/test-results/$1.out"
+	echo "------ $1 stderr ------"
+	cat >&2 "$test_dir/test-results/$1.err"
+	exit $status
+fi

@@ -123,14 +123,14 @@ What if you want only a subset of your collection of hooks to run for each diffe
 
 You may specify which hooks to enable or disable using a `git config` parameter based on a "long form" or "short form" of their filename. "Long form" includes the hook type directory and the full filename. "Short form" omits the hook type directory, and the `.optional` extension, if it exists. Examples follow.
 
-A hook named `pre-commit.d/format-code.sh` is enabled by default. To disable it, use either of these commands:
+A hook named `pre-commit.d/format-code.sh` will be enabled by default. To disable it, use either of these commands:
 
     git config --bool hook.pre-commit.d/format-code.sh.enabled false
     git config --bool hook.format-code.sh.enabled false
 
-A hook named `pre-commit.d/format-code.sh.optional` is disabled by default. To enable it, use either of these commands:
+A hook named `pre-commit.d/format-code.sh.optional` will be disabled by default. To enable it, use either of these commands:
 
-    git config --bool hook.pre-commit.d/format-code.sh.optional.enabled true
+    git config --bool hook.pre-commit.d/format-code.sh.enabled true
     git config --bool hook.format-code.sh.enabled true
 
 Note that if you have more than one type of hook named `format-code.sh`, the "short form" will enable or disable all types of them at once. This may be useful, for a set of cooperative hooks of multiple types that must be enabled or disabled simultaneously to work properly. Just ensure you don't name-conflict with other, unrelated hooks of different hook types.
