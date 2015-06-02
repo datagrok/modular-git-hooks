@@ -32,6 +32,13 @@ unset XDG_CONFIG_HOME
 unset CDPATH
 unset GREP_OPTIONS
 unset UNZIP
+export GIT_AUTHOR_EMAIL=author@example.com
+export GIT_AUTHOR_NAME='A U Thor'
+export GIT_COMMITTER_EMAIL=committer@example.com
+export GIT_COMMITTER_NAME='C O Mitter'
+export GIT_MERGE_VERBOSITY=5
+export GIT_MERGE_AUTOEDIT=no
+
 test_dir="$(pwd -P)"
 
 cd "$(mktemp -d "${TMPDIR:-/tmp}"/tmp.XXXXXXXXXX)"
