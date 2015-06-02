@@ -78,10 +78,10 @@ git config --local --bool --get-regexp '^hook\..*\.enable$' | while read key val
 		if
 			git config --local "${key}d" >/dev/null
 		then
+			echo >&2 "Removed deprecated configuration: ${key} = ${val}"
+		else
 			git config --local "${key}d" "${val}"
 			echo >&2 "Renamed deprecated configuration: ${key} -> ${key}d"
-		else
-			echo >&2 "Removed deprecated configuration: ${key} = ${value}"
 		fi
 	else
 		cat >&2 <<-EOF
