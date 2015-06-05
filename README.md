@@ -37,22 +37,45 @@ Most hooks intended for standalone use should work, unmodified, when placed with
 >
 > Versions of Git for Windows prior to 2.x include a "Git Bash" built on [msysGit](https://msysgit.github.io/), which is [built on](https://github.com/msysgit/msysgit#the-difference-between-msys-and-mingw), and inherits the Cygwin bug mentioned above. See the [git-for-windows FAQ](https://github.com/git-for-windows/git/wiki/FAQ) for more information about msysGit versus Git-for-Windows.
 
-Until I have this packaged up for easy installation in various operating systems, there are a variety of ways you can use this code:
+I have not yet packaged this utility for easy installation in various operating systems. Manual setup instructions follow.
 
-Basically:
+Basically: `dispatch` is the only file you need from this project. `install-dispatch` helps to automate hooking `dispatch` up to your repositories properly, but you can do the same by hand instead, if you prefer.
 
-1. get `dispatch` onto your system, somewhere. It doesn't need to be on the `$PATH`. You can keep it in your `.git/hooks/` directory if you prefer. I recommend `/opt/lib/githooks/`.
-2. put `install-dispatch` in the same directory as `dispatch`.
-3. from within your git repository, run `install-dispatch`. You may need to specify the full path to it, like `/opt/lib/githooks/install-dispatch`.
+### Enable `dispatch` on a single repo with `install-dispatch`
 
-If you prefer not to use `install-dispatch`, you may manually perform the steps that it does:
+1. Put `dispatch` onto your system, somewhere.
+    - It doesn't need to be on the `$PATH`. You can keep it in your repository's `.git/hooks/` directory if you prefer.
+    - I recommend to just keep a clone of this project at `/opt/lib/githooks/`.
+2. Put `install-dispatch` in the same directory as `dispatch`.
+    - If you're keeping a clone of this project at `/opt/lib/githooks`, this step is done already.
+3. From within your git repository, run `install-dispatch`. You may need to specify the full path to it, like `/opt/lib/githooks/install-dispatch`. It will create symlinks named for all git hooks.
+4. Create `hook.d` directories for your hooks and copy them into place. If you already had some hooks in place, this will be done for you automatically.
 
-1. For each git hook type, for example `pre-commit`:
+    # clone this project, place somewhere on the system
+    git clone git@github.com:datagrok/modular-git-hooks.git
+    sudo mkdir -P /opt/lib
+    sudo mv modular-git-hooks /opt/lib
+    # setup dispatch in my target repository
+    cd ~/myproject/myrepo
+    /opt/lib/modular-git-hooks/install-dispatch
+    # install your favorite hooks
+    mkdir .git/hooks/update.d
+    mv ~/my_update_hook .git/hooks/update.d/
+
+### Enable `dispatch` on a single repo manually
+
+If you prefer not to use `install-dispatch`, you may manually perform the steps that it does.
+
+1. Put `dispatch` onto your system, somewhere.
+    - It doesn't need to be on the `$PATH`. You can keep it in your repository's `.git/hooks/` directory if you prefer.
+    - I recommend to just keep a clone of this project at `/opt/lib/githooks/`.
+2. For each git hook type that you wish to dispatch, for example `pre-commit`:
     1. Create a `.d` directory for it: `mkdir .git/hooks/pre-commit.d`
     2. Move the existing hook, if it exists, into that directory: `mv .git/hooks/pre-commit .git/hooks/pre-commit.d/pre-commit.orig`
-    3. Create a symlink to `dispatch` named for the hook type: `ln -s dispatch .git/hooks/pre-commit`
+    3. Create a symlink to `dispatch` named for the hook type: `ln -s /opt/lib/modular-git-hooks/dispatch .git/hooks/pre-commit`
 
-# A shared collection of hooks
+
+## A shared collection of hooks
 
 Do you have several canonical "bare" repositories stored in a central server, and apply (many of) the same hooks to (many of) them?
 
@@ -60,64 +83,60 @@ Do you wish to provide a shared set of git hooks to several developers on your t
 
 Employing `dispatch` to separate git hook behavior into modular files enables you to:
 
-- keep your git hooks better organized,
+- keep all your git hooks in a single place,
 - keep the hooks themselves under version control,
 - easily share and apply them across all your git repositories, which enables you to
 - deploy hook improvements to all your repositories simultaneously.
 
 
-## Example
+### Example
 
 I have a central server that contains several bare repos, most of which I want to apply a similar set of hooks to.
 
+    /var/repos/             # The central area where I keep all my bare repos
+    ├── project1.git/
+    ├── project2.git/
+    ├── project3.git/
+    └── ...
+
 I have a directory on that server that contains everything needed for `dispatch` to work, and all the hooks that all my repositories might need. This directory is itself under version control, and is a clone of a bare repository.
+
+    /opt/lib/
+    ├── common-githooks/    # My local collection of useful hooks, organized for `dispatch`
+    └── modular-git-hooks/  # A clone of this project, where `dispatch` lives
+        ├── dispatch*
+        └── install-dispatch*
 
 Then, for each of my bare repos, I simply symlink their hooks directory to this central hooks clone. The result looks like this:
 
-    /var/repos/             # This is the central area where I keep all my bare repos
+    /var/repos/             # The central area where I keep all my bare repos
     ├── project1.git/
     │    └── hooks -> /opt/lib/common-githooks/
     ├── project2.git/
     │    └── hooks -> /opt/lib/common-githooks/
     ├── project3.git/
     │    └── hooks -> /opt/lib/common-githooks/
+    ├── ...
     │
     │   # you can even apply the git hooks to their own repository *mind blown*
     └── common-githooks.git/
         └── hooks -> /opt/lib/common-githooks/
 
-    /opt/lib/
-    ├── common-githooks/    # my local collection of useful hooks, organized for `dispatch`
-    │   ├── .git/           # which is itself under version control
-    │   │
-    │   ├── commit-msg.d/   # these directories contain all my hooks (not shown.)
-    │   ├── post-update.d/
-    │   ├── pre-commit.d/
-    │   ├── prepare-commit-msg.d/
-    │   ├── ...
-    │   ├── update.d/
-    │   │
-    │   │                   # symlinks from the hooks `git` looks for to `dispatch`
-    │   ├── commit-msg -> /opt/lib/modular-git-hooks/dispatch*
-    │   ├── post-update -> /opt/lib/modular-git-hooks/dispatch*
-    │   ├── pre-commit -> /opt/lib/modular-git-hooks/dispatch*
-    │   ├── prepare-commit-msg -> /opt/lib/modular-git-hooks/dispatch*
-    │   ├── ...
-    │   └── update -> /opt/lib/modular-git-hooks/dispatch*
-    │
-    └── modular-git-hooks/  # a clone of this project, where `dispatch` lives
-        ├── .git/
-        ├── README.md
-        ├── dispatch*
-        └── install-dispatch*
+After setting up the symlinks to `/opt/lib/common-githooks/`, `install-dispatch` needs to be run only once to set up `dispatch` properly. If you don't mind storing symlinks, you can even commit them to your `common-githooks` repository.
 
-I use a similar configuration for my local clones, as well. No single hook is called for both local and remote use, so it is safe to keep both local and remote hooks in the same repository!
+I use a similar configuration for my local clones, as well. No single hook is called for both local and remote use, so it is safe to keep both local and remote hooks in the same `common-githooks` repository!
 
-You don't have to use my path conventions. `install-dispatch` will set up the symlinks correctly for you no matter where it lives.
+    ~/working/
+    └── project1/           # a clone of /var/repos/project1.git in my home directory
+        └── .git/
+            └── hooks -> /opt/lib/common-githooks/
 
-## Per-repository hook selection
+You don't have to use my path conventions. `install-dispatch` will set up the symlinks correctly for you no matter where it lives, as long as it lives in the same directory as `dispatch`.
 
-What if you want only a subset of your collection of hooks to run for each different repository?
+
+### Per-repository hook selection
+
+What if you want only a *subset* of your collection of hooks to run for each different repository?
 
 `dispatch` will check git config for parameters that enable or disable each hook by filename, optionally including hook type. Hooks are enabled by default, unless their filename ends in `.optional`.
 
@@ -136,85 +155,6 @@ A hook named `pre-commit.d/format-code.sh.optional` will be disabled by default.
 Note that if you have more than one type of hook named `format-code.sh`, the "short form" will enable or disable all types of them at once. This may be useful, for a set of cooperative hooks of multiple types that must be enabled or disabled simultaneously to work properly. Just ensure you don't name-conflict with other, unrelated hooks of different hook types.
 
 Note that if you have set configuration values in *both* "long form" (more specific) and "short form" (less specific) syntax for a hook, the "long form" takes precedence. 
-
-# Theory of operation
-
-## Hook types
-
-From the [githooks(5) man page][], the hook types that git cares about are:
-
-    local hooks:
-
-        pre-applypatch      \
-        applypatch-msg      |- Invoked by "git am"
-        post-applypatch     /
-
-        pre-commit          \
-        prepare-commit-msg  |- Invoked by "git commit"
-        commit-msg          |
-        post-commit         /
-
-        pre-rebase          - invoked by "git rebase"
-        post-checkout       - invoked by "git checkout"
-        post-merge          - invoked by "git merge"
-        pre-push            - invoked by "git push"
-        pre-auto-gc         - may veto "git gc --auto"
-        post-rewrite        - invoked by "git rebase" and "git commit --amend"
-
-    remote hooks:
-
-        pre-receive         \
-        update              |- Invoked on remote by "git push" on local
-        post-receive        |
-        post-update         /
-
-Local hooks fire when performing various git actions in a local repository. Remote hooks fire in upstream repositories when using "git push" and similar commands to send updates to them. See the [githooks(5) man page][] for more information about how git invokes these scripts.
-
-Since there are no single hook types that are invoked for both local and remote, it is safe to keep both local and remote hooks in the same repository.
-
-
-## Walk-through
-
-By default, most git hooks are contained within a single executable file. When some have been enabled, the repository's hooks directory might look like this:
-
-    hooks/                  # Before using the modular-git-hooks dispatch mechanism
-    ├── commit-msg*
-    ├── post-update*
-    ├── pre-commit*
-    ├── prepare-commit-msg*
-    └── update*
-
-We want to perform potentially many different behaviors for each hook, and turn some of those behaviors off for certain repositories. If the hooks themselves are managed by git, we don't want git to complain about modified files when developers sharing the hooks repository enable and disable various functionality.
-
-So, we break each of the monolithic git hooks into a directory containing many modular hooks, and the original hook that git invokes is replaced with a (symlink to a) dispatcher. The result looks like this:
-
-    hooks/                  # After applying this mechanism
-    ├── commit-msg.d/
-    ├── post-update.d/
-    ├── pre-commit.d/
-    ├── prepare-commit-msg.d/
-    ├── update.d/
-    ├── dispatch*
-    ...
-
-Above, each hook type gets its own directory containing hooks, each of which will be run by `dispatch` when appropriate. This should look familiar to anyone who has used Debian's `run-parts` tool.
-
-To cause git to employ it, each of the hooks that git invokes becomes a symlink to `dispatch`:
-
-    ...
-    ├── applypatch-msg -> dispatch*
-    ├── commit-msg -> dispatch*
-    ├── post-commit -> dispatch*
-    ├── post-receive -> dispatch*
-    ├── post-update -> dispatch*
-    ├── pre-applypatch -> dispatch*
-    ├── pre-commit -> dispatch*
-    ├── prepare-commit-msg -> dispatch*
-    ├── pre-rebase -> dispatch*
-    ├── pre-receive -> dispatch*
-    └── update -> dispatch*
-
-`dispatch` need not necessarily live in the repository that collects all your shared hooks, as it does above. One might prefer to install `dispatch` at the system level, for example a clone of this project at /opt/lib might result in symlinks to `/opt/lib/modular-git-hooks/dispatch`, as shown in an earlier example. Or, your hook scripts repository might add this project as a git submodule.
 
 
 ## Developing your own hooks
@@ -244,7 +184,7 @@ The `dispatch` script will set the following variables into the environment for 
 
 - Propose a patch to `git` that obviates the need for this tool. (See if someone has been done this already.)
 
-- Explore a re-implementation in ~~C~~ any fast, compiled language with minimal run-time dependencies, that can produce binaries for use with old (CentOS 5) and recent Linux distributions, as well as OS X and BSD. Maybe even windows? Study how git itself is built, and mimic that.
+- Explore a re-implementation in any fast, compiled language with minimal run-time dependencies, like C or maybe Rust, that can produce binaries for use with old (CentOS 5) and recent Linux distributions, as well as OS X and BSD. Maybe even windows? Study how git itself is built, and mimic that.
 
 - Improve the suite of unit tests.
 
