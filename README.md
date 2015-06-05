@@ -51,16 +51,16 @@ Basically: `dispatch` is the only file you need from this project. `install-disp
 3. From within your git repository, run `install-dispatch`. You may need to specify the full path to it, like `/opt/lib/githooks/install-dispatch`. It will create symlinks named for all git hooks.
 4. Create `hook.d` directories for your hooks and copy them into place. If you already had some hooks in place, this will be done for you automatically.
 
-    # clone this project, place somewhere on the system
-    git clone git@github.com:datagrok/modular-git-hooks.git
-    sudo mkdir -P /opt/lib
-    sudo mv modular-git-hooks /opt/lib
-    # setup dispatch in my target repository
-    cd ~/myproject/myrepo
-    /opt/lib/modular-git-hooks/install-dispatch
-    # install your favorite hooks
-    mkdir .git/hooks/update.d
-    mv ~/my_update_hook .git/hooks/update.d/
+        # clone this project, place somewhere on the system
+        git clone git@github.com:datagrok/modular-git-hooks.git
+        sudo mkdir -P /opt/lib
+        sudo mv modular-git-hooks /opt/lib
+        # setup dispatch in my target repository
+        cd ~/myproject/myrepo
+        /opt/lib/modular-git-hooks/install-dispatch
+        # install your favorite hooks
+        mkdir .git/hooks/update.d
+        mv ~/my_update_hook .git/hooks/update.d/
 
 ### Enable `dispatch` on a single repo manually
 
