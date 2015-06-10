@@ -50,5 +50,3 @@ This project contains:
 ## License
 
 Copyright 2014 [Michael F. Lamb](http://datagrok.org). This software is released under the terms of the [GNU General Public License](http://www.gnu.org/licenses/gpl.html), version 3.
-
-[githooks(5) man page]: https://www.kernel.org/pub/software/scm/git/docs/githooks.html

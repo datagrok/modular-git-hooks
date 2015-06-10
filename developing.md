@@ -11,3 +11,5 @@ The `dispatch` script will set the following variables into the environment for 
     null_commit - the special "null commit" value meaning a branch is being deleted
     empty_tree - the special "empty tree" value meaning HEAD does not exist
     head_hash - the hash corresponding to HEAD, or empty_tree if HEAD does not exist
+
+[githooks(5) man page]: https://www.kernel.org/pub/software/scm/git/docs/githooks.html
