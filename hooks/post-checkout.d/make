@@ -1,0 +1,22 @@
+#!/bin/sh
+
+# (post-checkout githook) make.sh: every checkout, run GNU Make.
+#
+# Copyright 2014 Michael F. Lamb <mike@datagrok.org> <http://datagrok.org>
+# License: GNU GPL v3 or later: http://www.gnu.org/copyleft/gpl.html
+
+# This will be triggered by the checkout performed by update-upon-push.
+#
+# If you're using https://github.com/datagrok/modular-git-hooks/, you can name
+# this file $GIT_DIR/hooks/post-checkout.d/make
+# otherwise, name it $GIT_DIR/hooks/post-checkout
+
+# TODO: Add some sanity checks, make it easy to enable or disable only when
+# checking out a particular branch.
+
+cd "$(git rev-parse --show-toplevel)"
+
+# r = no builtin rules
+# R = no builtin variables
+# j4 = parallelize with up to 4 jobs
+[ -e Makefile ] && exec make -rRj4

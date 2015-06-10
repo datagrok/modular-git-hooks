@@ -1,0 +1,50 @@
+#!/bin/sh
+
+# (post-receive githook) update-upon-push.sh: updates the remote's work tree if it
+# is checked out to a branch which is being updated.
+#
+# Copyright 2014 Michael F. Lamb <mike@datagrok.org> <http://datagrok.org>
+# License: GNU GPL v3 or later: http://www.gnu.org/copyleft/gpl.html
+
+# If you're using https://github.com/datagrok/modular-git-hooks/, you can name
+# this file $GIT_DIR/hooks/post-receive.d/update-upon-push
+# otherwise, name it $GIT_DIR/hooks/post-receive
+
+# This hook is unnecessary if we deny pushing to the currently checked-out
+# branch.
+[ "$(git config receive.denyCurrentBranch)" = "ignore" ] || exit 0
+
+# This hook is unnecessary if this is a bare repository.
+[ "$(git config --bool core.bare)" = "false" ] || exit 0
+# if core.worktree is unset, default it to the parent directory of the git
+# repo, if that looks like the right thing to do. Otherwise, complain and die.
+if ! git config core.worktree > /dev/null; then
+	if [ "../.git" -ef "." ]; then
+		git config core.worktree '..'
+	else
+		fmt <<-EOF
+			Note: auto-update of work tree disabled because core.worktree is
+			unset.
+		EOF
+		exit 0
+	fi
+fi
+
+# If the work tree is not on a branch, we have nothing to do (but something
+# might be wrong.)
+if head="$(git symbolic-ref -q HEAD)"; then
+	while read old new ref; do
+		[ "$ref" = "$head" ] || continue
+		echo "Branch '${ref#refs/heads/}' is currenly checked out. Updating work tree."
+		# We use "git checkout --" here instead of "git reset --hard HEAD --"
+		# because it accomplishes the same while also triggering post-checkout
+		# hooks.
+		git checkout --force --
+	done
+else
+	fmt <<-EOF
+		Note: auto-update of work tree disabled because work tree is not
+		checked out to a branch. This may indicate that there are local
+		modifications that need to be cleaned up.
+	EOF
+fi
