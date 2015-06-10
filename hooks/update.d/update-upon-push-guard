@@ -1,0 +1,82 @@
+#!/bin/sh
+
+# (update githook) update-upon-push-guard.sh: a git update hook for use with
+# update-upon-push.sh. If the remote's work tree is checked out to a branch which
+# is being updated, and there are local modifications, detatch HEAD so those
+# modifications don't get clobbered by the reset-work-tree post-receive hook.
+#
+# Copyright 2014 Michael F. Lamb <mike@datagrok.org> <http://datagrok.org>
+# License: GNU GPL v3 or later: http://www.gnu.org/copyleft/gpl.html
+
+# If you're using https://github.com/datagrok/modular-git-hooks/, you can name
+# this file $GIT_DIR/hooks/update.d/update-upon-push-guard
+# otherwise, name it $GIT_DIR/hooks/update
+
+# This hook is unnecessary if we deny pushing to the currently checked-out
+# branch.
+[ "$(git config receive.denyCurrentBranch)" = "ignore" ] || exit 0
+
+# This hook is unnecessary if this is a bare repository.
+[ "$(git config --bool core.bare)" = "false" ] || exit 0
+
+# if core.worktree is unset, default it to the parent directory of the git
+# repo, if that looks like the right thing to do. Otherwise, die.
+if ! git config core.worktree > /dev/null; then
+	if [ "../.git" -ef "." ]; then
+		git config core.worktree '..'
+	else
+		# Don't complain here where it will happen once for every branch. Do it
+		# later in post-receive.
+		exit 0
+	fi
+fi
+
+# If git config receive.clobberWorkTree is set to true (default false), any
+# modifications to the work tree will be silently discarded.
+[ "$(git config --bool receive.clobberWorkTree || echo false)" = "false" ] || exit 0
+
+# If HEAD isn't even on a branch, nothing to do. Otherwise, get the branch.
+head="$(git symbolic-ref -q HEAD)" || exit 0
+
+ref="${1#refs/heads/}"
+old="$2"
+new="$3"
+
+# This hook is only concerned with updates to the currently-checked-out branch.
+[ "refs/heads/$ref" = "$head" ] || exit 0
+
+# If there are no local modifications, there's nothing left to do.
+git status --porcelain | grep '^.[MDUA]\|^[MADRC]' || exit 0
+
+fmt <<-EOF
+	ERROR: my work tree was checked out to branch '$ref', and someone has made
+	changes here without committing them.
+
+	Branch '$ref' will be updated with your commits, but to avoid losing my
+	local changes, my work tree will remain at hash $old and will no longer
+	track updates to '$ref'.
+
+	To fix this, navigate to my work tree and decide if the modifications
+	should be kept or discarded.
+EOF
+cat <<-EOF
+
+	If you wish to keep them:
+	    git stash
+	    git checkout $ref # or a different branch
+	    git stash pop
+	    # resolve conflicts
+	    git add
+	    git commit
+
+	If you don't care about the modifications:
+	    git checkout --force $ref # or a different branch
+EOF
+fmt <<-EOF
+
+	Thereafter, a push to this repository will update the work tree.
+
+	Until this is fixed you will see a reminder message when you push:
+
+EOF
+git checkout -q "$old"

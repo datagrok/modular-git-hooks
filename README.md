@@ -29,6 +29,15 @@ This repository provides a **general-purpose `dispatch`** tool that does all tha
 
 Most hooks intended for standalone use should work, unmodified, when placed within a hook-type directory.
 
+This project contains:
+
+- The executable script `dispatch`, which is *all that is needed* from this project to enable the use of multiple git hooks per git hook type.
+- `install-dispatch`, which is a little helper script that will get `dispatch` set up for you.
+- `tests/`, a set of functional tests to prevent me from breaking this code.
+- `hooks/`, a collection of *optional* hooks that work well with `dispatch`, that you may install where useful. For more information, see [the hooks README][]
+
+[the hooks README]: hooks/README.md
+
 ## Setup
 
 > **Note to Microsoft Windows users:** on Windows, this software requires either [Cygwin version 2.0.0 or higher](https://www.cygwin.com/), or [Git-for-Windows version 2.1 or higher](http://git-for-windows.github.io/).
@@ -45,10 +54,10 @@ Basically: `dispatch` is the only file you need from this project. `install-disp
 
 1. Put `dispatch` onto your system, somewhere.
     - It doesn't need to be on the `$PATH`. You can keep it in your repository's `.git/hooks/` directory if you prefer.
-    - I recommend to just keep a clone of this project at `/opt/lib/githooks/`.
+    - I recommend to just keep a clone of this project at `/opt/lib/modular-git-hooks/`.
 2. Put `install-dispatch` in the same directory as `dispatch`.
-    - If you're keeping a clone of this project at `/opt/lib/githooks`, this step is done already.
-3. From within your git repository, run `install-dispatch`. You may need to specify the full path to it, like `/opt/lib/githooks/install-dispatch`. It will create symlinks named for all git hooks.
+    - If you're keeping a clone of this project at `/opt/lib/modular-git-hooks`, this step is done already.
+3. From within your git repository, run `install-dispatch`. You may need to specify the full path to it, like `/opt/lib/modular-git-hooks/install-dispatch`. It will create symlinks named for all git hooks.
 4. Create `hook.d` directories for your hooks and copy them into place. If you already had some hooks in place, this will be done for you automatically.
 
         # clone this project, place somewhere on the system
@@ -68,7 +77,7 @@ If you prefer not to use `install-dispatch`, you may manually perform the steps 
 
 1. Put `dispatch` onto your system, somewhere.
     - It doesn't need to be on the `$PATH`. You can keep it in your repository's `.git/hooks/` directory if you prefer.
-    - I recommend to just keep a clone of this project at `/opt/lib/githooks/`.
+    - I recommend to just keep a clone of this project at `/opt/lib/modular-git-hooks/`.
 2. For each git hook type that you wish to dispatch, for example `pre-commit`:
     1. Create a `.d` directory for it: `mkdir .git/hooks/pre-commit.d`
     2. Move the existing hook, if it exists, into that directory: `mv .git/hooks/pre-commit .git/hooks/pre-commit.d/pre-commit.orig`
@@ -179,6 +188,8 @@ The `dispatch` script will set the following variables into the environment for 
 - [mcwhittemore/git-hook-modules](/mcwhittemore/git-hook-modules) requires node.js. Uses a custom-format configuration file.
 
 ## To do
+
+- `githooks` is typically one word. Rename this project to `modular-githooks` and update documentation to match.
 
 - By design, `dispatch` runs all the hooks in the `(hook).d` directory regardless of the exit status of any one. Is there a need for a mechanism to allow a hook to discontinue running other hooks of the current type? I'd prefer to say "no," as assuming that all hooks are orthogonal allows a future feature where hooks run in parallel.
 
