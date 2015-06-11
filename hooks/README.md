@@ -26,7 +26,19 @@ If you have cloned modular-git-hooks to some system-level location like `/opt/li
 
 ## Recipes
 
-- ["git push" to update your website][]
+- ["git push" to update your website][] if you have a git-managed directory on your webserver
+
+## To-do
+
+- TODO "git push" to update your website if you have a "dumb" webserver that may only receive files
+- TODO detect/reject/warn about files that shouldn't or probably shouldn't be in the repo like .egg-info, .pyc, .orig (defaults + configurable with git config) (server and local)
+- TODO detect/reject code that has merge markers left in
+- TODO warn about big binary files
+- TODO detect/reject/warn about big files that get added and removed in the same push, needlessly inflating the history
+- TODO apply linters, style checks, schema validators to source code (local vs. remote)
+- TODO check to see if there will be conflicts when merging with parent branch
+- TODO access controls to special protected branches
+- TODO abstract into a helper library the pattern of "warn about problems using local hooks to help devs, block those same problems using remote hooks to protect (certain branches of) the repo"
 
 ["git push" to update your website]: update-upon-push.md
 
