@@ -42,23 +42,17 @@ You can use `make` alone, or with the other tools.
 
 Below, `$GIT_DIR` refers to the `.git` directory on the remote (the webserver).
 
-<table><tr><th>
-
-With `dispatch`
+## With `dispatch`
 
 - symlink or copy `[update-upon-push][]` into `$GIT_DIR/hooks/post-receive.d/`
 - symlink or copy `[update-upon-push-guard][]` into `$GIT_DIR/hooks/update.d/`
 - symlink or copy `[make][]` into `$GIT_DIR/hooks/post-checkout.d/`
 
-</td><td>
-
-Without `dispatch`
+## Without `dispatch`
 
 - symlink or save `[update-upon-push][]` as `$GIT_DIR/hooks/post-receive`
 - symlink or save `[update-upon-push-guard][]` as `$GIT_DIR/hooks/update`
 - symlink or save `[make][]` as `$GIT_DIR/hooks/post-checkout`
-
-</td></tr></table>
 
 # License
 
