@@ -13,9 +13,9 @@ You will learn from the Internet that the minimal setup is:
 
 That's fine, but a few helper hooks on the remote can make things simple and safe:
 
-- `[update-upon-push][]` a `post-receive` hook that updates the code on the remote after a `git push`.
-- `[update-upon-push-guard][]` an `update` hook that prevents `update-upon-push` from clobbering any changes made by hand (without git) on the webserver side.
-- `[make][]` is a super simple `post-checkout` hook that runs `make` after the pushed code is deployed.
+- [update-upon-push][], a `post-receive` hook that updates the code on the remote after a `git push`.
+- [update-upon-push-guard][], an `update` hook that prevents `update-upon-push` from clobbering any changes made by hand (without git) on the webserver side.
+- [make][], a super simple `post-checkout` hook that runs `make` after the pushed code is deployed.
 
 Some features of these scripts:
 
@@ -44,15 +44,15 @@ Below, `$GIT_DIR` refers to the `.git` directory on the remote (the webserver).
 
 ## With `dispatch`
 
-- symlink or copy `[update-upon-push][]` into `$GIT_DIR/hooks/post-receive.d/`
-- symlink or copy `[update-upon-push-guard][]` into `$GIT_DIR/hooks/update.d/`
-- symlink or copy `[make][]` into `$GIT_DIR/hooks/post-checkout.d/`
+- symlink or copy [update-upon-push][] into `$GIT_DIR/hooks/post-receive.d/`
+- symlink or copy [update-upon-push-guard][] into `$GIT_DIR/hooks/update.d/`
+- symlink or copy [make][] into `$GIT_DIR/hooks/post-checkout.d/`
 
 ## Without `dispatch`
 
-- symlink or save `[update-upon-push][]` as `$GIT_DIR/hooks/post-receive`
-- symlink or save `[update-upon-push-guard][]` as `$GIT_DIR/hooks/update`
-- symlink or save `[make][]` as `$GIT_DIR/hooks/post-checkout`
+- symlink or save [update-upon-push][] as `$GIT_DIR/hooks/post-receive`
+- symlink or save [update-upon-push-guard][] as `$GIT_DIR/hooks/update`
+- symlink or save [make][] as `$GIT_DIR/hooks/post-checkout`
 
 # License
 
